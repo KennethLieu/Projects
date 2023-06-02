@@ -1,13 +1,14 @@
 /*
-UNO Classic Game Rules:
+ 
+ UNO Classic Game Rules:
  
  Welcome to UNO Classic Game! Compete in a 1v1 battle where the objective is to be the first player to remove all their cards. 
  To start, you can choose whether to compete for 500 points, 1000 points, 2000 points, or relentlessly 
  (until one player chooses to not play again). Please be sure that CAPS LOCK are ON to ensure that input can be processed 
  and to progress with the game. Afterwards, each player will begin with 7 cards, and try to be the first one to remove all their cards.
-Type P to play a card(provided you can play a card legally), D to draw a card, or U to type UNO when your turn arrives. 
-Please note that you MUST type U to shout UNO when you are about to remove your second to last card, as the system will end up 
-catching you otherwise and force you to draw 2 cards. Each card will be splitted into the following categories:
+ Type P to play a card(provided you can play a card legally), D to draw a card, or U to type UNO when your turn arrives. 
+ Please note that you MUST type U to shout UNO when you are about to remove your second to last card, as the system will end up 
+ catching you otherwise and force you to draw 2 cards. Each card will be splitted into the following categories:
 
      1. Number cards (0-9)
  
@@ -108,7 +109,10 @@ catching you otherwise and force you to draw 2 cards. Each card will be splitted
  3. Adds resulting updated code to GitHub
  4. Fixes bug where tiebreaker doesn't work properly for 4 player mode
  5. Fixes bug where CPU challenge mode doesn't work properly
- */
+
+ Update 6/2/2023 v1.4.2
+ 1. Adds the ability to see how many cards you can expect to draw for each option when challenging +4
+*/
 
 #include <iostream>
 #include <string>
@@ -671,7 +675,7 @@ int getTurnAfterPlayer(int challengerToken, int numPlay) {
 void playerChallengeDraw4Process(Player &challenger, Player &challenged, Card startingCard, int &turn, int numPlay, Color startColor) {
     std::string challenging = "x";
     while (challenging != "Y" and challenging != "N") {
-        std::cout << "Previous color was " << startColor.getColor() <<", do you think CPU " << challenger.getToken() << " has a " << startColor.getColor() << " (Y/N)? ";
+        std::cout << "Previous color was " << startColor.getColor() <<", do you think CPU " << challenger.getToken() << " has a " << startColor.getColor() << " (+0/6 Y, +4 N)(Y/N)? ";
         std::cin >> challenging;
     }
     if (challenging.compare("N") == 0) {
