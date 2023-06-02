@@ -1,0 +1,109 @@
+UNO Classic Game Rules:
+ 
+Welcome to UNO Classic Game! Compete in a 1v1 battle where the objective is to be the first player to remove all their cards. 
+To start, you can choose whether to compete for 500 points, 1000 points, 2000 points, or relentlessly 
+(until one player chooses to not play again). Please be sure that CAPS LOCK are ON to ensure that input can be processed 
+and to progress with the game. Afterwards, each player will begin with 7 cards, and try to be the first one to remove all their cards.
+Type P to play a card(provided you can play a card legally), D to draw a card, or U to type UNO when your turn arrives. 
+Please note that you MUST type U to shout UNO when you are about to remove your second to last card, as the system will end up 
+catching you otherwise and force you to draw 2 cards. Each card will be splitted into the following categories:
+
+     1. Number cards (0-9)
+ 
+     2. Action cards (DRAW2, SKIP, REVERSE)
+ 
+     3. Wild cards (WILD, DRAW4WILD)
+ 
+     DRAW2 will force the next player to draw 2 cards and loses their turn
+
+     SKIP will force the next player to lose their turn
+
+     REVERSE will reverse gameplay
+
+     WILD card will allow you to choose the color of the card
+
+     DRAW4WILD is the same as a WILD, BUT will make next player draw 4
+     if they do not challenge. If they do challenge and are successful,
+     the player of draw 4 will draw instead, if unsuccessful, draw 6 cards.
+ 
+ Points distribution:
+     1. Number cards are worth their face values each (0 for 0 points, 1 for 1 point, ... ,9 for 9 points)
+     2. Action cards (REVERSE, DRAW2, SKIP) are worth 20 points each
+     3. WILD cards (traditional wilds and wild +4s) are worth 50 points each
+ 
+ UNO Classic game development history log:
+ 
+ Game project started on: 11/25/2019
+ 
+ Update 11/27/2019: v1.0.0
+ 1. Allows playing UNO, for now only 2 player UNO is available and you MUST have another player present. *MAJOR UPDATE!*
+ 
+ Update 11/30/2019: v1.0.1
+ 1. Now displays the cards that you can play, in addition to your current hand.
+ 
+ Update 12/15/2019: v1.1.0
+ 1. Allows playing with CPU *MAJOR UPDATE!*
+ 2. Players can choose to compete for 500, 1000, 2000 points, or relentlessly (until 1 player quits)
+ 3. Players can also choose to play with CPU or play with another player
+ 
+ Update 12/19/2019: v1.1.1
+ 1. Improved AI of CPU
+ 2. UNO feature added so players MUST shout UNO or draw 2 cards (CPUs will shout UNO automatically by default).
+ 
+ Update 1/14/2020: v1.1.2
+ 1. All cards appear sorted order (based on card value only)
+ 2. Now displays consequence properly for Player 2 and CPU.
+ 3. Now displays number of points that each card in the losing player's hand is worth after the end of each round.
+ 4. Now displays rounds, rounds won WILL be tiebreaker if points tied. If tied points and rounds won tie, 
+ then winner will be determined by RANDOM!
+ 
+ Update 1/24/2020: v1.2.0
+ 1. Now allows players to choose to either play in 2 player gamemode or 4 player gamemode. *MAJOR UPDATE!*
+ 2. At the end of each round, there are major changes to the displaying of winning statistics, where you can type 1 to see your cards and points won, 
+ 2 to see Player/CPU 2's cards and points won, 3 to see Player/CPU 3's cards and points won, and 4 to see Player/CPU 4's cards and points won.
+ Initially it will display the ranks according to the value of the cards remaining and also displays the ranks of each player. 
+ Afterwards, press C to continue and move onto the overall statistics in terms of total points and rounds won. *MAJOR UPDATE!*
+ 
+ Update 1/30/2020: v1.2.1
+ 1. Fixed some bugs in the design of the gameplay:
+    a) Failure of reshuffling cards for all players when they draw cards and the game ends
+    b) Displaying player 3/4 despite playing only a 2 player game.
+ 
+ Update 2/6/2020: v1.2.2
+ 1. Fixed more bugs in gameplay:
+    a) Fixed bug where you can enter in any number input for choosing how many points to compete for.
+    b) Now added in the total value of the remaining cards in deck when displaying player statistics at the end of each round.
+ 
+ Update 2/11/2020: v1.2.3
+ 1. Fixed a bug where when a CPU plays an action card after drawing, that the turn will go back to the CPU.
+ 
+ Update 2/25/2020: v1.2.4
+ 1. Added the feature for players so that when they are about to go, that they are prompted to type CONT to continue to their turn, to prevent opponents from being able to see other people's cards.
+
+ Update 1/3/2022: v1.3.0
+ 1. Added challenge option for +4 wild (only works for CPU mode, still WIP for other players) *MAJOR UPDATE* :
+    a) The receiver of the +4 wild will have an option to challenge the +4 (through asking if other player has a color of the previus card)
+    b) If successful, the player of +4 wild will draw 4 instead
+    c) If unsuccessful, the receiver will draw 6 instead
+    d) Strategy is key!
+ 2. Fixes glitch where incorrect card is played for CPUs
+ 3. Fixes glitch where ranks are incorrectly displayed after viewing statistics
+ 4. Adds in time delays (challenging +4, CPU playing card, drawing cards)
+
+ Update 3/16/2022: v1.3.1
+ 1. Fix bug where points are incorrectly added.
+ 2. Fix bug where game displays wrong player or CPU drawing cards
+ 3. Adds time delay after a card has been played
+ 
+ Update 5/31/2023 v1.4.0
+ 1. Removes the ability to play with other players, only playable with CPU *MAJOR UPDATE*
+ 2. Fixes all tab inconsistencies in code
+ 3. Fixes bug where Player 1 and CPU 2 may appear to save the same hand
+ 4. Further kill redundant code to save code space
+
+ Update 6/1/2023 v1.4.1
+ 1. Further incorporate code resuability to save code space
+ 2. Adds more detailed comments to each section for clarity on UNO Project Game
+ 3. Adds resulting updated code to GitHub
+ 4. Fixes bug where tiebreaker doesn't work properly for 4 player mode
+ 5. Fixes bug where CPU challenge mode doesn't work properly
