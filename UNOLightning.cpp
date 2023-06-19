@@ -84,7 +84,7 @@
     opponents
  Additional notes:
   1. Despite it being a card you can play, the round ends when you remove all your normal UNO cards (PARDON card does NOT count as a 
-  normal card for the purposes of being in youe deck)
+  normal card for the purposes of being in your deck)
   2. If you win a round WITHOUT using your PARDON card, you will automatically receive 100 points on top of the value of cards of your
   opponents
   3. If you lose a round WITHOUT using your PARDON card, it will be worth 100 points to your opponents who placed higher than
