@@ -589,7 +589,7 @@ std::vector<Card> sort(std::vector<Card> a) {
 
 //finds the minimum of three numbers
 int min(int a, int b, int c) { 
-    if (a < b and a < c) {
+    if ((a < b and a < c) or (a<c and a == b)) {
         return a;
     } else if (b < a and b < c) {
         return b;
@@ -1001,7 +1001,7 @@ int main() {
                                     shoutedUno1 = true;
                                 }
                                 //card is wild or draw4
-                                if (p1.getDeck().getCardAtPos(p1.getDeck().getNumberOfCards()-1).getFaceCard().getFace().compare("DRAW4WILD") == 0 or p1.getDeck().getCardAtPos(p1.getDeck().getNumberOfCards()-1).getFaceCard().getFace().compare("WILD") == 0) {
+                                if (p1.getDeck().getCardAtPos(p1.getDeck().getNumberOfCards()-1).getFaceCard().getFace().compare("DRAW4WILD") == 0 or p1.getDeck().getCardAtPos(p1.getDeck().getNumberOfCards()-1).getFaceCard().getFace().compare("WILD") == 0 or p1.getDeck().getCardAtPos(p1.getDeck().getNumberOfCards()-1).getFaceCard().getFace().compare("LIGHTNING") == 0) {
                                     Color startColor = startingCard.getColorCard();
                                     playerChangesColor(startingCard);
                                     if (p1.getDeck().getCardAtPos(p1.getDeck().getNumberOfCards()-1).getFaceCard().getFace().compare("DRAW4WILD") == 0) {
@@ -1129,7 +1129,7 @@ int main() {
                         }
                         int pos1 = std::stoi(pos);
                         //wild or +4 card
-                        if (p1.getDeck().getCardAtPos(pos1-1).getFaceCard().getFace().compare("DRAW4WILD") == 0 or p1.getDeck().getCardAtPos(pos1-1).getFaceCard().getFace().compare("WILD") == 0) {
+                        if (p1.getDeck().getCardAtPos(pos1-1).getFaceCard().getFace().compare("DRAW4WILD") == 0 or p1.getDeck().getCardAtPos(pos1-1).getFaceCard().getFace().compare("WILD") == 0 or p1.getDeck().getCardAtPos(pos1-1).getFaceCard().getFace().compare("LIGHTNING") == 0) {
                             Color startColor = startingCard.getColorCard();
                             playerChangesColor(startingCard);
                             if (p1.getDeck().getCardAtPos(pos1-1).getFaceCard().getFace().compare("DRAW4WILD") == 0) {
@@ -1257,7 +1257,7 @@ int main() {
                                 shoutedUno1 = true;
                             }
                             //WILD or +4
-                            if (p1.getDeck().getCardAtPos(p1.getDeck().getNumberOfCards()-1).getFaceCard().getFace().compare("DRAW4WILD") == 0 or p1.getDeck().getCardAtPos(p1.getDeck().getNumberOfCards()-1).getFaceCard().getFace().compare("WILD") == 0) {
+                            if (p1.getDeck().getCardAtPos(p1.getDeck().getNumberOfCards()-1).getFaceCard().getFace().compare("DRAW4WILD") == 0 or p1.getDeck().getCardAtPos(p1.getDeck().getNumberOfCards()-1).getFaceCard().getFace().compare("WILD") == 0 or p1.getDeck().getCardAtPos(p1.getDeck().getNumberOfCards()-1).getFaceCard().getFace().compare("LIGHTNING") == 0) {
                                 Color startColor = startingCard.getColorCard();
                                 playerChangesColor(startingCard);
                                 if (p1.getDeck().getCardAtPos(p1.getDeck().getNumberOfCards()-1).getFaceCard().getFace().compare("DRAW4WILD") == 0) {
@@ -1408,7 +1408,7 @@ int main() {
                     }
 
                     //DRAW 4 or WILD
-                    if (p2.getDeck().getCardAtPos(positioned-1).getFaceCard().getFace().compare("DRAW4WILD") == 0 or p2.getDeck().getCardAtPos(positioned-1).getFaceCard().getFace().compare("WILD") == 0) {
+                    if (p2.getDeck().getCardAtPos(positioned-1).getFaceCard().getFace().compare("DRAW4WILD") == 0 or p2.getDeck().getCardAtPos(positioned-1).getFaceCard().getFace().compare("WILD") == 0 or p2.getDeck().getCardAtPos(positioned).getFaceCard().getFace().compare("LIGHTNING") == 0) {
                         Color startColor = startingCard.getColorCard();
                         startingCard.changeColorCard(chooseColor(p2));
                         std::cout << "Color changed to: " << startingCard.getColorCard().getColor() << std::endl;
@@ -1510,7 +1510,7 @@ int main() {
                             shoutedUno2 = true;
                         }
                         //+4 or wild
-                        if (p2.getDeck().getCardAtPos(p2.getDeck().getNumberOfCards()-1).getFaceCard().getFace().compare("DRAW4WILD") == 0 or p2.getDeck().getCardAtPos(p2.getDeck().getNumberOfCards()-1).getFaceCard().getFace().compare("WILD") == 0) {
+                        if (p2.getDeck().getCardAtPos(p2.getDeck().getNumberOfCards()-1).getFaceCard().getFace().compare("DRAW4WILD") == 0 or p2.getDeck().getCardAtPos(p2.getDeck().getNumberOfCards()-1).getFaceCard().getFace().compare("WILD") == 0 or p2.getDeck().getCardAtPos(positioned).getFaceCard().getFace().compare("LIGHTNING") == 0) {
                             Color startColor = startingCard.getColorCard();
                             startingCard.changeColorCard(chooseColor(p2));
                             std::cout << "Color changed to: " << startingCard.getColorCard().getColor() << std::endl;
@@ -1626,19 +1626,20 @@ int main() {
                 positions3 = getPlayablePositions(p3.getDeck(),startingCard);
                 std::cout << "CPU 3's turn! " << std::endl;
                 sleep_for(seconds(3));
+                int positioned = -1;
                 //CPU 3 has playable card
                 if (p3.getDeck().hasPlayableCard(startingCard) == true) {
                     if (p3.getDeck().getNumberOfCards() == 2) {
                         shoutedUno3 = true;
                     }
-                    int positioned = -1;
+                    
                     if (clockwise == true) {
                         positioned = positionToRemoveCard(p3,positions3,p4);
                     } else {
                         positioned = positionToRemoveCard(p3,positions3,p2);
                     }
                     //+4 or wild
-                    if (p3.getDeck().getCardAtPos(positioned-1).getFaceCard().getFace().compare("DRAW4WILD") == 0 or p3.getDeck().getCardAtPos(positioned-1).getFaceCard().getFace().compare("WILD") == 0) {
+                    if (p3.getDeck().getCardAtPos(positioned-1).getFaceCard().getFace().compare("DRAW4WILD") == 0 or p3.getDeck().getCardAtPos(positioned-1).getFaceCard().getFace().compare("WILD") == 0 or p3.getDeck().getCardAtPos(positioned).getFaceCard().getFace().compare("LIGHTNING") == 0) {
                         Color startColor = startingCard.getColorCard();
                         startingCard.changeColorCard(chooseColor(p3));
                         std::cout << "Color changed to: " << startingCard.getColorCard().getColor() << std::endl;
@@ -1719,11 +1720,11 @@ int main() {
                             shoutedUno3 = true;
                         }
                         //+4 or wild
-                        if (p3.getDeck().getCardAtPos(p3.getDeck().getNumberOfCards()-1).getFaceCard().getFace().compare("DRAW4WILD") == 0 or p3.getDeck().getCardAtPos(p3.getDeck().getNumberOfCards()-1).getFaceCard().getFace().compare("WILD") == 0) {
+                        if (p3.getDeck().getCardAtPos(positioned-1).getFaceCard().getFace().compare("DRAW4WILD") == 0 or p3.getDeck().getCardAtPos(positioned-1).getFaceCard().getFace().compare("WILD") == 0 or p3.getDeck().getCardAtPos(positioned).getFaceCard().getFace().compare("LIGHTNING") == 0) {
                             Color startColor = startingCard.getColorCard();
                             startingCard.changeColorCard(chooseColor(p3));
                             std::cout << "Color changed to: " << startingCard.getColorCard().getColor() << std::endl;
-                            if (p2.getDeck().getCardAtPos(p2.getDeck().getNumberOfCards()-1).getFaceCard().getFace().compare("DRAW4WILD") == 0) {
+                            if (p3.getDeck().getCardAtPos(p3.getDeck().getNumberOfCards()-1).getFaceCard().getFace().compare("DRAW4WILD") == 0) {
                                 startingCard.changeFaceCard(Face("DRAW4WILD"));
                                 if (clockwise == true) {
                                     if (p3.getDeck().getNumberOfCards() == 1) {
@@ -1815,18 +1816,19 @@ int main() {
                 positions4 = getPlayablePositions(p4.getDeck(),startingCard);
                 std::cout << "CPU 4's turn! " << std::endl;
                 sleep_for(seconds(3));
+                int positioned = -1;
                 if (p4.getDeck().hasPlayableCard(startingCard) == true) {
                     if (p4.getDeck().getNumberOfCards() == 2) {
                         shoutedUno4 = true;
                     }
-                    int positioned = -1;
+                    
                     if (clockwise == true) {
                         positioned = positionToRemoveCard(p4,positions4,p1);
                     } else {
                         positioned = positionToRemoveCard(p4,positions4,p3);
                     }
                     //+4 and wild
-                    if (p4.getDeck().getCardAtPos(positioned-1).getFaceCard().getFace().compare("DRAW4WILD") == 0 or p4.getDeck().getCardAtPos(positioned-1).getFaceCard().getFace().compare("WILD") == 0) {
+                    if (p4.getDeck().getCardAtPos(positioned-1).getFaceCard().getFace().compare("DRAW4WILD") == 0 or p4.getDeck().getCardAtPos(positioned-1).getFaceCard().getFace().compare("WILD") == 0 or p4.getDeck().getCardAtPos(positioned-1).getFaceCard().getFace().compare("LIGHTNING") == 0) {
                         Color startColor = startingCard.getColorCard();
                         startingCard.changeColorCard(chooseColor(p4));
                         std::cout << "Color changed to: " << startingCard.getColorCard().getColor() << std::endl;
@@ -1905,7 +1907,7 @@ int main() {
                             shoutedUno4 = true;
                         }
                         //draw 4 and wild
-                        if (p4.getDeck().getCardAtPos(p4.getDeck().getNumberOfCards()-1).getFaceCard().getFace().compare("DRAW4WILD") == 0 or p4.getDeck().getCardAtPos(p4.getDeck().getNumberOfCards()-1).getFaceCard().getFace().compare("WILD") == 0) {
+                        if (p4.getDeck().getCardAtPos(p4.getDeck().getNumberOfCards()-1).getFaceCard().getFace().compare("DRAW4WILD") == 0 or p4.getDeck().getCardAtPos(p4.getDeck().getNumberOfCards()-1).getFaceCard().getFace().compare("WILD") == 0 or p4.getDeck().getCardAtPos(positioned).getFaceCard().getFace().compare("LIGHTNING") == 0) {
                             Color startColor = startingCard.getColorCard();
                             startingCard.changeColorCard(chooseColor(p4));
                             std::cout << "Color changed to: " << startingCard.getColorCard().getColor() << std::endl;
@@ -2146,7 +2148,7 @@ int main() {
                         pt3 += (p4.getDeck().valueOfDeck() + p1.getDeck().valueOfDeck());
                         won3 = p4.getDeck().valueOfDeck() + p1.getDeck().valueOfDeck();
                         winnings.push_back(3);
-                        if (min(p2.getDeck().valueOfDeck(),p4.getDeck().valueOfDeck()) == p1.getDeck().valueOfDeck()) { 
+                        if (min(p1.getDeck().valueOfDeck(),p4.getDeck().valueOfDeck()) == p1.getDeck().valueOfDeck()) { 
                             std::cout << "3rd: Player 1" << std::endl;
                             std::cout << "4th: CPU 4" << std::endl;           
                             winnings.push_back(1);

@@ -30,10 +30,10 @@
  
  Update 6/3/2023 v1.0.0 
  1. Introduces the UNO Lightning game, derived from UNO Classic
- 2. Introduces a new card, the LIGHTNING card! It has the following behavior
+ 2. *MAJOR UPDATE* Introduces a new card, the LIGHTNING card! It has the following behavior 
     a) Acts as a normal WILD card where yoou can change the color to your liking
     b) Stuns the next player for 1-3 turns
- 3. Introduces a way to get out of being stunned, getting your turn back, and cancel any bad effects placed on you
+ 3. Introduces a way to get out of being stunned, getting your turn back, and cancel any bad effects placed on you *MAJOR UPDATER*
     a) Taking a coin flip challenge, and landing on SUCCESS will set you free, cancel any effects placed on you, and take your turn
     like normal
     b) Beware! It does come at a cost, as landing on FAIL will not only make you suffer effects placed on you and forfeiting your
@@ -52,14 +52,48 @@
     a) Adds in that Your fate is in God's Hands when you opt to take the coin flip challenge
     b) Input for opting to take coin toss challenge or not is on same line, instead of on new line
 
- Update ETC 6/4/2023 v1.0.2
+ Update 6/19/2023 v1.0.2
  1. Update game messages for coin toss for CPU
-    a) Spend 3 seconds for CPU to decide on coin toss 
+    a) Spend 3 seconds for CPU to decide on coin toss (CPU always agrees to coin toss)
     b) Adds message saying that CPU will say YES
     c) Spends 5 seconds for CPU to take coin flip challenge
     d) While waiting, say message "CPU x is taking coin flip challenge... Please hold..."
     e) Followed by message of whether CPU suceeds or fails
- 2. More bug fixes???
+    f) Give 3 seconds to see message before moving on!
+ 2. More bug fixes:
+    a) Fixes bug where when CPU 3 puts a +4 and is counterclockwise, CPU 4 is seen taking challenge instead of CPU 
+    (message inconsistencies).
+    b) Fixes bug where when CPU 4 fails on coin flip, that there's extra white space after Player 1 places card
+    c) Fixes bug where when Player 1 puts down LIGHTNING card, that color change message is displayed twice.
+    d) Fixes bug where time delay and messages for CPU's coin flip doesn't display properly
+    e) Fixes bug where when a stunned player is stunned after a round, that the stun effect carries on to next round
+ 3. Additional feature
+    a) Adds message where after 3rd turn lost for stunned player, that the stun effect has expired
+    b) Now if you get hit with +4 while being stunned, if you fail coin flip, you don't get a chance to challenge +4. Instead, you 
+    draw 4 automatically as if you didn't take the challenge
+ Update ETC TBA v1.1.0
+  1. *MAJOR UPDATE!* Introduces a new card: the PARDON card! It will has the following features: 
+    a) NOT a normal UNO card that you pick up from deck, but everytime you draw a normal UNO card, you have 1/16 chance of picking
+    up a PARDON card alongside it. 
+    b) When used, PARDON card will prevent the user from suffering the DRAW, SKIP, or STUN effects played on them for one turn. When
+    that happens, the player will get their turn back as if nothing happened (same effect as landing on SUCCESS from coin flip).
+    c) Only 1 PARDON card can be owned by anyone at ANY time. Once a PARDON card is picked up, no one else will be able to receive 
+    one until the original one is consumed.
+    d) PARDON card will be worth 100 points in the scoring
+    e) If you win a round WITHOUT using your PARDON card, you will automatically receive 100 points on top of the value of cards of your
+    opponents
+ Additional notes:
+  1. Despite it being a card you can play, the round ends when you remove all your normal UNO cards (PARDON card does NOT count as a 
+  normal card for the purposes of being in youe deck)
+  2. If you win a round WITHOUT using your PARDON card, you will automatically receive 100 points on top of the value of cards of your
+  opponents
+  3. If you lose a round WITHOUT using your PARDON card, it will be worth 100 points to your opponents who placed higher than
+  you! Tread carefully! 
+  4. PARDON card can only be used when a +2, +4, SKIP, or LIGHTNING card is played on you. You will be given an option to use it and 
+  be freed from the effects played on you, or keep it and suffer from the effects
+  5. PARDON card CANNOT used to free yourself from the STUN effect. Instead, you MUST take the coin flip to be freed. It can only be 
+  used to prevent you from being stunned in the first place. 
+
 */
 
 #include <iostream>
@@ -474,27 +508,53 @@ std::vector<int> getPlayablePositions(Deck a, Card start) {
     return pos;
 }
 
+void coinFlipChallenge(int token, int &suceed, bool &tookChallenge) {
+    if (token == 1) {
+        std::string coinDecision = "";
+        std::cout << "Player 1, do you wish to take a coin flip for a chance to be freed? (Y/N): ";
+        std::cin >> coinDecision;
+        if (coinDecision == "Y") {
+            std::cout << "Your fate is in God's hands now..." << std::endl;
+            sleep_for(seconds(5));
+            int freed = rand()%2;
+            if (freed == 1) {
+                std::cout << "SUCCESS! Player 1 have been freed! Cancelling SKIP effect..." << std::endl;
+                suceed = 1;
+            } else {
+                std::cout << "FAIL! Player 1 failed the coin flip. Player 1 will draw 1 penalty card and remain stunned..." << std::endl;
+                suceed = 0;
+            }
+        } else {
+            std::cout << "Player 1 didn't take the coin flip. Player 1 will remain stunned..." << std::endl;
+            tookChallenge = false;
+        }
+    } else {
+        std::cout << "CPU " << token  << " awaiting decision: take the coin flip for a chance to be freed? " << std::endl;
+        sleep_for(seconds(3));
+        std::cout << "CPU " << token  << " decided to take the coin flip. " << std::endl;
+        sleep_for(seconds(2));
+        std::cout << "CPU " << token  << " is taking the coin flip challenge... Please hold..."<<std::endl;
+        sleep_for(seconds(5));
+        int freed = rand()%2;
+        if (freed == 1) {
+            std::cout << "SUCCESS! CPU " << token << " have been freed! Cancelling stun effect..." << std::endl;
+            suceed = 1;
+        } else {
+            std::cout << "FAIL! CPU " << token  << " failed the coin flip. CPU " << token << " will draw 1 penalty card and remain stunned..." << std::endl;
+            suceed = 0;
+        }
+    }
+}
+
 //displays effect of CPU or Player, if applicable
 void displayEffect(int token, Card start, int &suceed,bool successful = true, int lightning = 0) { 
     if (start.getFaceCard().getFace().compare("DRAW4WILD") == 0) {
         if (token == 1) {
             if (lightning == token) {
-                std::string coinDecision = "";
-                std::cout << "Player 1, do you wish to take a coin flip for a chance to be freed? (+0/1/5/7 Y, +0/4/6 N) (Y/N): " << std::endl;
-                std::cin >> coinDecision;
-                if (coinDecision == "Y") {
-                    std::cout << "Your fate is in God's hands now..." << std::endl;
-                    sleep_for(seconds(5));
-                    int freed = rand()%2;
-                    if (freed == 1) {
-                        std::cout << "SUCCESS! Player 1 have been freed! Cancelling DRAW 4 effect..." << std::endl;
-                        suceed = 1;
-                    } else {
-                        std::cout << "FAIL! Player 1 failed the coin flip. Player 1 will draw 1 penalty card and suffer DRAW 4 effect..." << std::endl;
-                        suceed = 0;
-                    }
-                } else {
-                    std::cout << "Player 1 didn't take the coin flip. Player 1 will suffer DRAW 4 effect..." << std::endl;
+                bool tookC = true;
+                coinFlipChallenge(token,suceed,tookC);
+                if (suceed == 0 or tookC == false) {
+                    std::cout << "Player 1: DRAW 4 CARDS!" << std::endl;
                 }
             } else {
                 if (successful) {
@@ -505,16 +565,12 @@ void displayEffect(int token, Card start, int &suceed,bool successful = true, in
             }
         } else {
             if (lightning == token) {
-                std::cout << "CPU " << token  << " awaiting decision: take the coin flip for a chance to be freed? " << std::endl;
-                sleep_for(seconds(5));
-                int freed = rand()%2;
-                if (freed == 1) {
-                    std::cout << "SUCCESS! CPU " << token << " have been freed! Cancelling DRAW 4 effect..." << std::endl;
-                    suceed = 1;
-                } else {
-                    std::cout << "FAIL! CPU " << token  << " failed the coin flip. CPU " << token << " will draw 1 penalty card and suffer DRAW 4 effect..." << std::endl;
-                    suceed = 0;
+                bool tookC = true;
+                coinFlipChallenge(token,suceed,tookC);
+                if (suceed == 0 or tookC == false) {
+                    std::cout << "CPU " << token << ": DRAW 4 CARDS!" << std::endl;
                 }
+                sleep_for(seconds(3));
             } else {
                 if (successful) {
                     std::cout << "CPU " << token << ": DRAW 4 CARDS!" << std::endl;
@@ -534,23 +590,9 @@ void displayEffect(int token, Card start, int &suceed,bool successful = true, in
     } else if (start.getFaceCard().getFace().compare("DRAW2") == 0) {
         if (token == 1) {
             if (lightning == 1) {
-                std::string coinDecision = "";
-                std::cout << "Player 1, do you wish to take a coin flip for a chance to be freed? (+0/3 Y, +2 N) (Y/N): ";
-                std::cin >> coinDecision;
-                if (coinDecision == "Y") {
-                    std::cout << "Your fate is in God's hands now..." << std::endl;
-                    sleep_for(seconds(5));
-                    int freed = rand()%2;
-                    if (freed == 1) {
-                        std::cout << "SUCCESS! Player 1 have been freed! Cancelling SKIP effect..." << std::endl;
-                        suceed = 1;
-                    } else {
-                        std::cout << "FAIL! Player 1 failed the coin flip. Player 1 will draw 1 penalty card and suffer DRAW 2 effect..." << std::endl;
-                        std::cout << "Player 1: DRAW 2 CARDS!" << std::endl;
-                        suceed = 0;
-                    }
-                } else {
-                    std::cout << "Player 1 didn't take the coin flip. Player 1 will suffer DRAW 2 effect..." << std::endl;
+                bool tookC = true;
+                coinFlipChallenge(token,suceed,tookC);
+                if (suceed == 0 or tookC == false) {
                     std::cout << "Player 1: DRAW 2 CARDS!" << std::endl;
                 }
             } else {
@@ -558,18 +600,12 @@ void displayEffect(int token, Card start, int &suceed,bool successful = true, in
             }
         } else {
             if (lightning == token) {
-                std::cout << "CPU " << token  << " awaiting decision: take the coin flip for a chance to be freed? " << std::endl;
-                sleep_for(seconds(5));
-                std::string coinDecision = "Y";
-                int freed = rand()%2;
-                if (freed == 1) {
-                    std::cout << "SUCCESS! CPU " << token << " have been freed! Cancelling DRAW 2 effect..." << std::endl;
-                    suceed = 1;
-                } else {
-                    std::cout << "FAIL! CPU " << token  << " failed the coin flip. CPU " << token << " will draw 1 penalty card and suffer DRAW 2 effect..." << std::endl;
+                bool tookC = true;
+                coinFlipChallenge(token,suceed,tookC);
+                if (suceed == 0 or tookC == false) {
                     std::cout << "CPU " << token << ": DRAW 2 CARDS!" << std::endl;
-                    suceed = 0;
                 }
+                sleep_for(seconds(3));
             } else {
                 std::cout << "CPU " << token << ": DRAW 2 CARDS!" << std::endl;
             }
@@ -577,23 +613,9 @@ void displayEffect(int token, Card start, int &suceed,bool successful = true, in
     } else if (start.getFaceCard().getFace().compare("SKIP") == 0) {
         if (token == 1) {
             if (lightning == 1) {
-                std::string coinDecision = "";
-                std::cout << "Player 1, do you wish to take a coin flip for a chance to be freed? (+0/1 Y, +0 N) (Y/N): " << std::endl;
-                std::cin >> coinDecision;
-                if (coinDecision == "Y") {
-                    std::cout << "Your fate is in God's hands now..." << std::endl;
-                    sleep_for(seconds(5));
-                    int freed = rand()%2;
-                    if (freed == 1) {
-                        std::cout << "SUCCESS! Player 1 have been freed! Cancelling SKIP effect..." << std::endl;
-                        suceed = 1;
-                    } else {
-                        std::cout << "FAIL! Player 1 failed the coin flip. Player 1 will draw 1 penalty card and suffer SKIP effect..." << std::endl;
-                        std::cout << "Player 1: LOST TURN!" << std::endl;
-                        suceed = 0;
-                    }
-                } else {
-                    std::cout << "Player 1 didn't take the coin flip. Player 1 will suffer SKIP effect..." << std::endl;
+                bool tookC = true;
+                coinFlipChallenge(1,suceed,tookC);
+                if (suceed == 0 or tookC == false) {
                     std::cout << "Player 1: LOST TURN!" << std::endl;
                 }
             } else {
@@ -601,19 +623,12 @@ void displayEffect(int token, Card start, int &suceed,bool successful = true, in
             }
         } else {
             if (lightning == token) {
-                std::cout << "CPU " << token  << " awaiting decision: take the coin flip for a chance to be freed? " << std::endl;
-                sleep_for(seconds(5));
-                std::string coinDecision = "Y";
-                int freed = rand()%2;
-                if (freed == 1) {
-                    std::cout << "SUCCESS! CPU " << token << " have been freed! Cancelling SKIP effect..." << std::endl;
-                    suceed = 1;
-                } else {
-                    std::cout << "FAIL! CPU " << token  << " failed the coin flip. CPU " << token << " will draw 1 penalty card and suffer SKIP effect..." << std::endl;
+                bool tookC = true;
+                coinFlipChallenge(token,suceed,tookC);
+                if (suceed == 0 or tookC == false) {
                     std::cout << "CPU " << token << ": LOST TURN!" << std::endl;
-                    suceed = 0;
                 }
-                
+                sleep_for(seconds(3));
             } else {
                 std::cout << "CPU " << token << ": LOST TURN!" << std::endl;
             }
@@ -660,11 +675,11 @@ std::vector<Card> sort(std::vector<Card> a) {
 
 //finds the minimum of three numbers
 int min(int a, int b, int c) { 
-    if (a < b and a < c) {
+    if ((a < b and a < c) or (a < c and a == b)) {
         return a;
     } else if (b < a and b < c) {
         return b;
-    }
+    } 
     return c;
 }
 
@@ -709,6 +724,19 @@ int getTurn(int numPlay, int challengedToken, int challengerToken) {
     }
 }
 
+void expiredStun(int token, int &lightning, int &turnStunned) {
+    turnStunned++;
+    if (turnStunned == 3) {
+        turnStunned = 0;
+        lightning = 0;
+        if (token == 1) {
+            std::cout << "Player 1's stun effect has expired. " << std::endl;
+        } else {
+            std::cout << "CPU " << token << "'s stun effect has expired. " << std::endl;
+        }
+    }
+}
+
 //Process when a CPU has been challenged by a draw4
 void cpuChallengeDraw4Process(Player &challenger, Player &challenged, Card startingCard, int &turn, int numPlay, Color startColor, int &suceed, int lightning = 0) {
    std::cout << "CPU " << challenged.getToken() << " awaiting decision: challenge DRAW 4 or not?" << std::endl;
@@ -729,7 +757,7 @@ void cpuChallengeDraw4Process(Player &challenger, Player &challenged, Card start
                 turn = getTurn(numPlay,challenged.getToken(),challenger.getToken());
             }
         } else {
-            std::cout << "CPU 2 took take the challenge and was UNSUCCESSFUL!" << std::endl;
+            std::cout << "CPU " << challenged.getToken() << " took take the challenge and was UNSUCCESSFUL!" << std::endl;
             drawCards(challenged,6);   
             displayEffect(challenged.getToken(),startingCard,suceed,false,0);
             turn = getTurn(numPlay,challenged.getToken(),challenger.getToken());
@@ -778,26 +806,14 @@ void playerChallengeDraw4Process(Player &challenger, Player &challenged, Card st
 }
 
 //Verify UNOs for player and CPUs
-void verifyUNOs(bool shoutUNO1, bool shoutUNO2, bool shoutUNO3, bool shoutUNO4, int &c1, int &c2, int &c3, int &c4, Player &p1) {
+void verifyUNOs(bool shoutUNO1, Player &p1, int &c1) {
     if (shoutUNO1 == true and p1.getDeck().getNumberOfCards() == 1 and c1 == 0) {
         std::cout << "Player 1: UNO!" << std::endl;
-        c1++;
-    } else if (p1.getDeck().getNumberOfCards() == 1 and shoutUNO1 == false) {
-        std::cout << "Player 1: Missed UNO shout. DRAW 2 CARDS!" << std::endl;
+        c1 = 1;
+    } else if (shoutUNO1 == false and p1.getDeck().getNumberOfCards() == 1){
+        std::cout << "Player 1: MISSED UNO SHOUT! DRAW 2 CARDS!" << std::endl;
         drawCards(p1,2);
     }
-    if (shoutUNO2 == true and c2 == 0) {
-        std::cout << "CPU 2: UNO!" << std::endl;
-        c2++;
-    }
-    if (shoutUNO3 == true and c3 == 0) {
-        std::cout << "CPU 3: UNO!" << std::endl;
-        c3++;
-    } 
-    if (shoutUNO4 == true and c4 == 0) {
-        std::cout << "CPU 4: UNO!" << std::endl;
-        c4++;
-    } 
     
 }
 
@@ -860,10 +876,10 @@ int main() {
     bool validChoice = false;
 
     //0 if nobody is stunned, or the respective player's token #
-    unsigned int lightning = 0;
+    int lightning = 0;
 
     //initially 0, lightning will be 0 once turnStunned = 3.
-    unsigned int turnStunned = 0;
+    int turnStunned = 0;
 
     //choose how to compete in the game
     while (isNumber(optionChosen) == false or validChoice == false) {
@@ -965,7 +981,7 @@ int main() {
                 clockwise = false;
             }
         //take appropriate action for wild/draw 4
-        } else if (startingCard.getFaceCard().getFace().compare("WILD") == 0 or startingCard.getFaceCard().getFace().compare("DRAW4WILD") == 0 or startingCard.getFaceCard().getFace().compare("WILDTWIST") == 0) {
+        } else if (startingCard.getFaceCard().getFace().compare("WILD") == 0 or startingCard.getFaceCard().getFace().compare("DRAW4WILD") == 0 or startingCard.getFaceCard().getFace().compare("LIGHTNING") == 0) {
             std::cout << "Starting color chosen by random!" << std::endl;
             dec = rand()%4;
             switch(dec) {
@@ -1013,54 +1029,49 @@ int main() {
             //Player 1 turn
             if (turn == 1) {
                 if (lightning == 1) {
-                    std::string coinDecision = "";
-                    std::cout << "Player 1, do you wish to take a coin flip for a chance to be freed? (+0/1 Y, +0 N) (Y/N): " << std::endl;
-                    std::cin >> coinDecision;
-                    if (coinDecision == "Y") {
-                        sleep_for(seconds(5));
-                        int freed = rand()%2;
-                        if (freed == 1) {
-                            std::cout << "SUCCESS! Player 1 have been freed! Cancelling STUN effect..." << std::endl;
-                            suceed = 1;
+                    bool tookC = true;
+                    coinFlipChallenge(1,suceed,tookC);
+                    if (tookC == false) {
+                        expiredStun(1,lightning,turnStunned);
+                        if (numPlay == 2 or clockwise == true) {
+                            turn = 2;
+                        } else {
+                            turn = 4;
+                        }
+                        sleep_for(seconds(3));
+                        continue;
+                    } else {
+                        if (suceed == 1) {
                             turn = 1;
                             lightning = 0;
                             turnStunned = 0;
+                            sleep_for(seconds(3));
                         } else {
-                            std::cout << "FAIL! Player 1 failed the coin flip. Player 1 will draw 1 penalty card and suffer STUN effect..." << std::endl;
-                            suceed = 0;
                             drawCards(p1,1);
                             if (numPlay == 2 or clockwise == true) {
                                 turn = 2;
                             } else {
                                 turn = 4;
                             }
-                            turnStunned++;
-                            if (turnStunned == 3) {
-                                turnStunned = 0;
-                                lightning = 0;
-                            }
+                            expiredStun(1,lightning,turnStunned);
+                            sleep_for(seconds(3));
                             continue;
                         }
-                    } else {
-                        std::cout << "Player 1 didn't take the coin flip. Player 1 will suffer STUN effect..." << std::endl;
-                        turnStunned++;
-                        if (turnStunned == 3) {
-                            turnStunned = 0;
-                            lightning = 0;
-                        }
-                        turn = 4;
-                        continue;
                     }
                 }
                 p1 = Player(Deck(sort(p1.getDeck().getCards())),1,pt1,rounds1);
                 p2 = Player(Deck(sort(p2.getDeck().getCards())),2,pt2,rounds2);
                 p3 = Player(Deck(sort(p3.getDeck().getCards())),3,pt3,rounds3);
                 p4 = Player(Deck(sort(p4.getDeck().getCards())),4,pt4,rounds4);
-                verifyUNOs(shoutedUno1,shoutedUno2,shoutedUno3,shoutedUno4,c1,c2,c3,c4,p1); 
+                verifyUNOs(shoutedUno1,p1,c1); 
                 playableCards1 = getPlayableCards(p1.getDeck(),startingCard);
                 positions1 = getPlayablePositions(p1.getDeck(),startingCard);
                 std::cout << "Player 1's turn!" << std::endl;
                 p1.revealHand();
+                if (p1.getDeck().getNumberOfCards() >= 2) {
+                    shoutedUno1 = false;
+                    c1 = 0;
+                }
 
                 //displays number of cards each oppoent(s) has
                 std::cout << "Number of cards in CPU 2's hand: " << p2.getDeck().getNumberOfCards() << std::endl;
@@ -1142,11 +1153,13 @@ int main() {
                                                         displayEffect(p2.getToken(),startingCard,suceed,true,lightning);
                                                         if (suceed == 0) {
                                                             drawCards(p2,1);
-                                                            cpuChallengeDraw4Process(p1,p2,startingCard,turn,numPlay,startColor,suceed,lightning);
+                                                            displayEffect(p2.getToken(),startingCard,suceed,true,0);
+                                                            drawCards(p2,4);
                                                             turnStunned++;
                                                             if (turnStunned == 3) {
                                                                 turnStunned = 0;
                                                                 lightning = 0;
+                                                                std::cout << "CPU 2's stun effect has expired. " << std::endl;
                                                             }
                                                         } else {
                                                             turn = 2;
@@ -1166,11 +1179,13 @@ int main() {
                                                         displayEffect(p4.getToken(),startingCard,suceed,true,lightning);
                                                         if (suceed == 0) {
                                                             drawCards(p4,1);
-                                                            cpuChallengeDraw4Process(p1,p4,startingCard,turn,numPlay,startColor,suceed,lightning);
+                                                            displayEffect(p4.getToken(),startingCard,suceed,true,lightning);
+                                                            drawCards(p4,4);
                                                             turnStunned++;
                                                             if (turnStunned == 3) {
                                                                 turnStunned = 0;
                                                                 lightning = 0;
+                                                                std::cout << "CPU 4's stun effect has expired. " << std::endl;
                                                             }
                                                         } else {
                                                             turn = 4;
@@ -1191,11 +1206,13 @@ int main() {
                                                     displayEffect(p2.getToken(),startingCard,suceed,true,lightning);
                                                     if (suceed == 0) {
                                                         drawCards(p2,1);
-                                                        cpuChallengeDraw4Process(p1,p2,startingCard,turn,numPlay,startColor,suceed,lightning);
+                                                        displayEffect(p2.getToken(),startingCard,suceed,true,0);
+                                                        drawCards(p2,4);
                                                         turnStunned++;
                                                         if (turnStunned == 3) {
                                                             turnStunned = 0;
                                                             lightning = 0;
+                                                            std::cout << "CPU 2's stun effect has expired. " << std::endl;
                                                         }
                                                     } else {
                                                         turn = 2;
@@ -1212,54 +1229,37 @@ int main() {
                                         actioned = true;
                                         if (clockwise == true or numPlay == 2) {
                                             if (lightning == 2) {
-                                                std::cout << "CPU " << 2  << " awaiting decision: take the coin flip for a chance to be freed? " << std::endl;
-                                                sleep_for(seconds(5));
-                                                std::string coinDecision = "Y";
-                                                int freed = rand()%2;
-                                                if (freed == 1) {
-                                                    std::cout << "SUCCESS! CPU " << 2 << " have been freed! Cancelling STUN effect..." << std::endl;
-                                                    turn = 2;
-                                                    suceed = 1;
+                                                bool tookC = true;
+                                                coinFlipChallenge(2,suceed,tookC);
+                                                if (suceed == 1) {
                                                     lightning = 0;
                                                     turnStunned = 0;
+                                                    turn = 2;
                                                 } else {
-                                                    std::cout << "FAIL! CPU " << 2  << " failed the coin flip. CPU " << 2 << " will draw 1 penalty card and suffer STUN effect..." << std::endl;
-                                                    std::cout << "CPU " << 2 << ": FORFEITED TURN!" << std::endl;
-                                                    suceed = 0;
                                                     drawCards(p2,1);
-                                                    turn = 3;
-                                                    turnStunned++;
-                                                    if (turnStunned == 3) {
-                                                        turnStunned = 0;
-                                                        lightning = 0;
+                                                    if (numPlay == 4) {
+                                                        turn = 3;
                                                     }
+                                                    expiredStun(2,lightning,turnStunned);
                                                 }
+                                                sleep_for(seconds(3));
                                             } else {
                                                 turn = 2;
                                             }
                                         } else {
                                             if (lightning == 4) {
-                                                std::cout << "CPU " << 4  << " awaiting decision: take the coin flip for a chance to be freed? " << std::endl;
-                                                sleep_for(seconds(5));
-                                                std::string coinDecision = "Y";
-                                                int freed = rand()%2;
-                                                if (freed == 1) {
-                                                    std::cout << "SUCCESS! CPU " << 4 << " have been freed! Cancelling STUN effect..." << std::endl;
-                                                    turn = 4;
-                                                    suceed = 1;
+                                                bool tookC = true;
+                                                coinFlipChallenge(4,suceed,tookC);
+                                                if (suceed == 1) {
                                                     lightning = 0;
                                                     turnStunned = 0;
+                                                    turn = 2;
                                                 } else {
-                                                    std::cout << "FAIL! CPU " << 4  << " failed the coin flip. CPU " << 4 << " will draw 1 penalty card and suffer STUN effect..." << std::endl;
-                                                    suceed = 0;
                                                     drawCards(p4,1);
                                                     turn = 3;
-                                                    turnStunned++;
-                                                    if (turnStunned == 3) {
-                                                        turnStunned = 0;
-                                                        lightning = 0;
-                                                    }
+                                                    expiredStun(4,lightning,turnStunned);
                                                 }
+                                                sleep_for(seconds(3));
                                             } else {
                                                 turn = 4;
                                             }
@@ -1286,55 +1286,37 @@ int main() {
                                                 std::cout << "LIGHTNING ALREADY ACTIVE! Now treated as standard WILD card. " << std::endl;
                                                 if (clockwise == true or numPlay == 2) {
                                                     if (lightning == 2) {
-                                                        std::cout << "CPU " << 2  << " awaiting decision: take the coin flip for a chance to be freed? " << std::endl;
-                                                        sleep_for(seconds(5));
-                                                        std::string coinDecision = "Y";
-                                                        int freed = rand()%2;
-                                                        if (freed == 1) {
-                                                            std::cout << "SUCCESS! CPU " << 2 << " have been freed! Cancelling STUN effect..." << std::endl;
-                                                            turn = 2;
-                                                            suceed = 1;
+                                                        bool tookC = true;
+                                                        coinFlipChallenge(2,suceed,tookC);
+                                                        if (suceed == 1) {
                                                             lightning = 0;
                                                             turnStunned = 0;
+                                                            turn = 2;
                                                         } else {
-                                                            std::cout << "FAIL! CPU " << 2  << " failed the coin flip. CPU " << 2 << " will draw 1 penalty card and suffer STUN effect..." << std::endl;
-                                                            std::cout << "CPU " << 2 << ": FORFEITED TURN!" << std::endl;
-                                                            suceed = 0;
                                                             drawCards(p2,1);
-                                                            turn = 3;
-                                                            turnStunned++;
-                                                            if (turnStunned == 3) {
-                                                                turnStunned = 0;
-                                                                lightning = 0;
+                                                            if (numPlay == 4) {
+                                                                turn = 3;
                                                             }
+                                                            expiredStun(2,lightning,turnStunned);
                                                         }
+                                                        sleep_for(seconds(3));
                                                     } else {
                                                         turn = 2;
                                                     }
                                                 } else {
                                                     if (lightning == 4) {
-                                                        std::cout << "CPU " << 4  << " awaiting decision: take the coin flip for a chance to be freed? " << std::endl;
-                                                        sleep_for(seconds(5));
-                                                        std::string coinDecision = "Y";
-                                                        int freed = rand()%2;
-                                                        if (freed == 1) {
-                                                            std::cout << "SUCCESS! CPU " << 4 << " have been freed! Cancelling STUN effect..." << std::endl;
-                                                            turn = 4;
-                                                            suceed = 1;
+                                                        bool tookC = true;
+                                                        coinFlipChallenge(4,suceed,tookC);
+                                                        if (suceed == 1) {
                                                             lightning = 0;
                                                             turnStunned = 0;
+                                                            turn = 2;
                                                         } else {
-                                                            std::cout << "FAIL! CPU " << 4  << " failed the coin flip. CPU " << 4 << " will draw 1 penalty card and suffer STUN effect..." << std::endl;
-                                                            std::cout << "CPU " << 4 << ": FORFEITED TURN!" << std::endl;
-                                                            suceed = 0;
                                                             drawCards(p4,1);
                                                             turn = 3;
-                                                            turnStunned++;
-                                                            if (turnStunned == 3) {
-                                                                turnStunned = 0;
-                                                                lightning = 0;
-                                                            }
+                                                            expiredStun(4,lightning,turnStunned);
                                                         }
+                                                        sleep_for(seconds(3));
                                                     } else {
                                                         turn = 4;
                                                     }
@@ -1378,11 +1360,7 @@ int main() {
                                                 } else if (suceed == 0) {
                                                     drawCards(p2,3);
                                                     turn = 3;
-                                                    turnStunned++;
-                                                    if (turnStunned == 3) {
-                                                        turnStunned = 0;
-                                                        lightning = 0;
-                                                    }
+                                                    expiredStun(2,lightning,turnStunned);
                                                 } else {
                                                     drawCards(p2,2);
                                                     turn = 3;
@@ -1395,11 +1373,7 @@ int main() {
                                                 } else if (suceed == 0) {
                                                     drawCards(p4,3);
                                                     turn = 3;
-                                                    turnStunned++;
-                                                    if (turnStunned == 3) {
-                                                        turnStunned = 0;
-                                                        lightning = 0;
-                                                    }
+                                                    expiredStun(4,lightning,turnStunned);
                                                 } else {
                                                     drawCards(p4,2);
                                                     turn = 3;
@@ -1409,13 +1383,10 @@ int main() {
                                             if (suceed == 1) {
                                                 turn = 2;
                                                 lightning = 0;
+                                                turnStunned = 0;
                                             } else if (suceed == 0) {
                                                 drawCards(p2,3);
-                                                turnStunned++;
-                                                if (turnStunned == 3) {
-                                                    turnStunned = 0;
-                                                    lightning = 0;
-                                                }
+                                                expiredStun(2,lightning,turnStunned);
                                             } else {
                                                 drawCards(p2,2);
                                             }
@@ -1441,14 +1412,11 @@ int main() {
                                                 }
                                             } else if (suceed == 0){
                                                 turn = 3;
-                                                turnStunned++;
-                                                if (turnStunned == 3) {
-                                                    turnStunned = 0;
-                                                    lightning = 0;
-                                                }
                                                 if (clockwise) {
+                                                    expiredStun(2,lightning,turnStunned);
                                                     drawCards(p2,1);
                                                 } else {
+                                                    expiredStun(4,lightning,turnStunned);
                                                     drawCards(p4,1);
                                                 }
                                             } else {
@@ -1461,11 +1429,7 @@ int main() {
                                                 turnStunned = 0;
                                             } else if (suceed == 0) {
                                                 drawCards(p2,1);
-                                                turnStunned++;
-                                                if (turnStunned == 3) {
-                                                    turnStunned = 0;
-                                                    lightning = 0;
-                                                }
+                                                expiredStun(2,lightning,turnStunned);
                                             }
                                         }
                                     }
@@ -1476,57 +1440,37 @@ int main() {
                                     actioned = true;
                                     if (numPlay == 2 or clockwise == true) {
                                         if (lightning == 2) {
-                                            std::cout << "CPU " << 2  << " awaiting decision: take the coin flip for a chance to be freed? " << std::endl;
-                                            sleep_for(seconds(5));
-                                            std::string coinDecision = "Y";
-                                            int freed = rand()%2;
-                                            if (freed == 1) {
-                                                std::cout << "SUCCESS! CPU " << 2 << " have been freed! Cancelling STUN effect..." << std::endl;
+                                            bool tookC = true;
+                                            coinFlipChallenge(2,suceed,tookC);
+                                            if (suceed == 1) {
                                                 turn = 2;
-                                                suceed = 1;
                                                 lightning = 0;
                                                 turnStunned = 0;
                                             } else {
-                                                std::cout << "FAIL! CPU " << 2  << " failed the coin flip. CPU " << 2 << " will draw 1 penalty card and suffer STUN effect..." << std::endl;
-                                                std::cout << "CPU " << 2 << ": FORFEITED TURN!" << std::endl;
-                                                suceed = 0;
                                                 drawCards(p2,1);
                                                 if (numPlay == 4) {
                                                     turn = 3;
                                                 }
-                                                turnStunned++;
-                                                if (turnStunned == 3) {
-                                                    turnStunned = 0;
-                                                    lightning = 0;
-                                                }
+                                                expiredStun(2,lightning,turnStunned);
                                             }
+                                            sleep_for(seconds(3));
                                         } else {
                                             turn = 2;
                                         }
                                     } else {
                                         if (lightning == 4) {
-                                            std::cout << "CPU " << 4  << " awaiting decision: take the coin flip for a chance to be freed? " << std::endl;
-                                            sleep_for(seconds(5));
-                                            std::string coinDecision = "Y";
-                                            int freed = rand()%2;
-                                            if (freed == 1) {
-                                                std::cout << "SUCCESS! CPU " << 4 << " have been freed! Cancelling STUN effect..." << std::endl;
+                                            bool tookC = true;
+                                            coinFlipChallenge(4,suceed,tookC);
+                                            if (suceed == 1) {
                                                 turn = 4;
-                                                suceed = 1;
                                                 lightning = 0;
                                                 turnStunned = 0;
                                             } else {
-                                                std::cout << "FAIL! CPU " << 4  << " failed the coin flip. CPU " << 4 << " will draw 1 penalty card and suffer STUN effect..." << std::endl;
-                                                std::cout << "CPU " << 4 << ": FORFEITED TURN!" << std::endl;
-                                                suceed = 0;
                                                 drawCards(p4,1);
                                                 turn = 3;
-                                                turnStunned++;
-                                                if (turnStunned == 3) {
-                                                    turnStunned = 0;
-                                                    lightning = 0;
-                                                }
+                                                expiredStun(4,lightning,turnStunned);
                                             }
+                                            sleep_for(seconds(3));
                                         } else {
                                             turn = 4;
                                         }
@@ -1538,57 +1482,37 @@ int main() {
                                 actioned = true;
                                 if (numPlay == 2 or clockwise == true) {
                                     if (lightning == 2) {
-                                        std::cout << "CPU " << 2  << " awaiting decision: take the coin flip for a chance to be freed? " << std::endl;
-                                        sleep_for(seconds(5));
-                                        std::string coinDecision = "Y";
-                                        int freed = rand()%2;
-                                        if (freed == 1) {
-                                            std::cout << "SUCCESS! CPU " << 2 << " have been freed! Cancelling STUN effect..." << std::endl;
+                                        bool tookC = true;
+                                        coinFlipChallenge(2,suceed,tookC);
+                                        if (suceed == 1) {
                                             turn = 2;
-                                            suceed = 1;
                                             lightning = 0;
                                             turnStunned = 0;
                                         } else {
-                                            std::cout << "FAIL! CPU " << 2  << " failed the coin flip. CPU " << 2 << " will draw 1 penalty card and suffer STUN effect..." << std::endl;
-                                            std::cout << "CPU " << 2 << ": FORFEITED TURN!" << std::endl;
-                                            suceed = 0;
                                             drawCards(p2,1);
                                             if (numPlay == 4) {
                                                 turn = 3;
                                             }
-                                            turnStunned++;
-                                            if (turnStunned == 3) {
-                                                turnStunned = 0;
-                                                lightning = 0;
-                                            }
+                                            expiredStun(2,lightning,turnStunned);
                                         }
+                                        sleep_for(seconds(3));
                                     } else {
                                         turn = 2;
                                     }
                                 } else {
                                     if (lightning == 4) {
-                                        std::cout << "CPU " << 4  << " awaiting decision: take the coin flip for a chance to be freed? " << std::endl;
-                                        sleep_for(seconds(5));
-                                        std::string coinDecision = "Y";
-                                        int freed = rand()%2;
-                                        if (freed == 1) {
-                                            std::cout << "SUCCESS! CPU " << 4 << " have been freed! Cancelling STUN effect..." << std::endl;
+                                        bool tookC = true;
+                                        coinFlipChallenge(4,suceed,tookC);
+                                        if (suceed == 1) {
                                             turn = 4;
-                                            suceed = 1;
                                             lightning = 0;
                                             turnStunned = 0;
                                         } else {
-                                            std::cout << "FAIL! CPU " << 4  << " failed the coin flip. CPU " << 4 << " will draw 1 penalty card and suffer STUN effect..." << std::endl;
-                                            std::cout << "CPU " << 4 << ": FORFEITED TURN!" << std::endl;
-                                            suceed = 0;
                                             drawCards(p4,1);
                                             turn = 3;
-                                            turnStunned++;
-                                            if (turnStunned == 3) {
-                                                turnStunned = 0;
-                                                lightning = 0;
-                                            }
+                                            expiredStun(4,lightning,turnStunned);
                                         }
+                                        sleep_for(seconds(3));
                                     } else {
                                         turn = 4;
                                     }
@@ -1600,56 +1524,38 @@ int main() {
                             playedDrew = false;
                             if (numPlay == 2 or clockwise == true) {
                                 if (lightning == 2) {
-                                    std::cout << "CPU " << 2  << " awaiting decision: take the coin flip for a chance to be freed? " << std::endl;
-                                    sleep_for(seconds(5));
-                                    int freed = rand()%2;
-                                    if (freed == 1) {
-                                        std::cout << "SUCCESS! CPU " << 2 << " have been freed! Cancelling STUN effect..." << std::endl;
+                                    bool tookC = true;
+                                    coinFlipChallenge(2,suceed,tookC);
+                                    if (suceed == 1) {
                                         turn = 2;
-                                        suceed = 1;
                                         lightning = 0;
                                         turnStunned = 0;
                                     } else {
-                                        std::cout << "FAIL! CPU " << 2  << " failed the coin flip. CPU " << 2 << " will draw 1 penalty card and suffer STUN effect..." << std::endl;
-                                        std::cout << "CPU " << 2 << ": FORFEITED TURN!" << std::endl;
-                                        suceed = 0;
                                         drawCards(p2,1);
                                         if (numPlay == 4) {
                                             turn = 3;
                                         }
-                                        turnStunned++;
-                                        if (turnStunned == 3) {
-                                            turnStunned = 0;
-                                            lightning = 0;
-                                        }
+                                        expiredStun(2,lightning,turnStunned);
                                     }
+                                    sleep_for(seconds(3));
                                 } else {
                                     turn = 2;
                                 }
                                 suceed = -1;
                             } else {
                                 if (lightning == 4) {
-                                    std::cout << "CPU " << 4  << " awaiting decision: take the coin flip for a chance to be freed? " << std::endl;
-                                    sleep_for(seconds(5));
-                                    int freed = rand()%2;
-                                    if (freed == 1) {
-                                        std::cout << "SUCCESS! CPU " << 4 << " have been freed! Cancelling STUN effect..." << std::endl;
+                                    bool tookC = true;
+                                    coinFlipChallenge(4,suceed,tookC);
+                                    if (suceed == 1) {
                                         turn = 4;
-                                        suceed = 1;
                                         lightning = 0;
                                         turnStunned = 0;
                                     } else {
-                                        std::cout << "FAIL! CPU " << 4  << " failed the coin flip. CPU " << 4 << " will draw 1 penalty card and suffer STUN effect..." << std::endl;
-                                        std::cout << "CPU " << 4 << ": FORFEITED TURN!" << std::endl;
-                                        suceed = 0;
                                         drawCards(p4,1);
                                         turn = 3;
-                                        turnStunned++;
-                                        if (turnStunned == 3) {
-                                            turnStunned = 0;
-                                            lightning = 0;
-                                        }
+                                        expiredStun(4,lightning,turnStunned);
                                     }
+                                    sleep_for(seconds(3));
                                 } else {
                                     turn = 4;
                                 }  
@@ -1690,12 +1596,9 @@ int main() {
                                                 displayEffect(p2.getToken(),startingCard,suceed,true,lightning);
                                                 if (suceed == 0) {
                                                     drawCards(p2,1);
-                                                    cpuChallengeDraw4Process(p1,p2,startingCard,turn,numPlay,startColor,suceed);
-                                                    turnStunned++;
-                                                    if (turnStunned == 3) {
-                                                        turnStunned = 0;
-                                                        lightning = 0;
-                                                    }
+                                                    displayEffect(p2.getToken(),startingCard,suceed, true, 0);
+                                                    drawCards(p2,4);
+                                                    expiredStun(2,lightning,turnStunned);                                                    
                                                 } else {
                                                     turn = 2;
                                                     lightning = 0;
@@ -1714,12 +1617,9 @@ int main() {
                                                 displayEffect(p4.getToken(),startingCard,suceed,true,lightning);
                                                 if (suceed == 0) {
                                                     drawCards(p4,1);
-                                                    cpuChallengeDraw4Process(p1,p4,startingCard,turn,numPlay,startColor,suceed);
-                                                    turnStunned++;
-                                                    if (turnStunned == 3) {
-                                                        turnStunned = 0;
-                                                        lightning = 0;
-                                                    }
+                                                    displayEffect(p4.getToken(),startingCard,suceed, true, 0);
+                                                    drawCards(p4,4);  
+                                                    expiredStun(4,lightning,turnStunned);
                                                 } else {
                                                     turn = 4;
                                                     lightning = 0;
@@ -1739,12 +1639,9 @@ int main() {
                                             displayEffect(p2.getToken(),startingCard,suceed,true,lightning);
                                             if (suceed == 0) {
                                                 drawCards(p2,1);
-                                                cpuChallengeDraw4Process(p1,p2,startingCard,turn,numPlay,startColor,suceed);
-                                                turnStunned++;
-                                                if (turnStunned == 3) {
-                                                    turnStunned = 0;
-                                                    lightning = 0;
-                                                }
+                                                displayEffect(p2.getToken(),startingCard,suceed, true, 0);
+                                                drawCards(p2,4);  
+                                                expiredStun(2,lightning,turnStunned);
                                             } else {
                                                 turn = 2;
                                                 lightning = 0;
@@ -1760,55 +1657,37 @@ int main() {
                                 actioned = true;
                                 if (clockwise == true or numPlay == 2) {
                                     if (lightning == 2) {
-                                        std::cout << "CPU " << 2  << " awaiting decision: take the coin flip for a chance to be freed? " << std::endl;
-                                        sleep_for(seconds(5));
-                                        std::string coinDecision = "Y";
-                                        int freed = rand()%2;
-                                        if (freed == 1) {
-                                            std::cout << "SUCCESS! CPU " << 2 << " have been freed! Cancelling STUN effect..." << std::endl;
+                                        bool tookC = true;
+                                        coinFlipChallenge(2,suceed,tookC);
+                                        if (suceed == 1) {
                                             turn = 2;
-                                            suceed = 1;
                                             lightning = 0;
                                             turnStunned = 0;
-                                        } else {
-                                            std::cout << "FAIL! CPU " << 2  << " failed the coin flip. CPU " << 2 << " will draw 1 penalty card and suffer STUN effect..." << std::endl;
-                                            std::cout << "CPU " << 2 << ": FORFEITED TURN!" << std::endl;
-                                            suceed = 0;
+                                        } else if (suceed == 0) {
                                             drawCards(p2,1);
-                                            turn = 3;
-                                            turnStunned++;
-                                            if (turnStunned == 3) {
-                                                turnStunned = 0;
-                                                lightning = 0;
+                                            if (numPlay == 4) {
+                                                turn = 3;
                                             }
+                                            expiredStun(2,lightning,turnStunned);
                                         }
+                                        sleep_for(seconds(3));
                                     } else {
-                                        turn = 4;
+                                        turn = 2;
                                     }
                                 } else {
                                     if (lightning == 4) {
-                                        std::cout << "CPU " << 4  << " awaiting decision: take the coin flip for a chance to be freed? " << std::endl;
-                                        sleep_for(seconds(5));
-                                        std::string coinDecision = "Y";
-                                        int freed = rand()%2;
-                                        if (freed == 1) {
-                                            std::cout << "SUCCESS! CPU " << 4 << " have been freed! Cancelling STUN effect..." << std::endl;
+                                        bool tookC = true;
+                                        coinFlipChallenge(4,suceed,tookC);
+                                        if (suceed == 1) {
                                             turn = 4;
-                                            suceed = 1;
                                             lightning = 0;
                                             turnStunned = 0;
-                                        } else {
-                                            std::cout << "FAIL! CPU " << 4  << " failed the coin flip. CPU " << 4 << " will draw 1 penalty card and suffer STUN effect..." << std::endl;
-                                            std::cout << "CPU " << 4 << ": FORFEITED TURN!" << std::endl;
-                                            suceed = 0;
+                                        } else if (suceed == 0) {
                                             drawCards(p4,1);
                                             turn = 3;
-                                            turnStunned++;
-                                            if (turnStunned == 3) {
-                                                turnStunned = 0;
-                                                lightning = 0;
-                                            }
+                                            expiredStun(2,lightning,turnStunned);
                                         }
+                                        sleep_for(seconds(3));
                                     } else {
                                         turn = 4;
                                     }
@@ -1835,55 +1714,37 @@ int main() {
                                         std::cout << "LIGHTNING ALREADY ACTIVE! Now treated as standard WILD card. " << std::endl;
                                         if (clockwise == true or numPlay == 2) {
                                             if (lightning == 2) {
-                                                std::cout << "CPU " << 2  << " awaiting decision: take the coin flip for a chance to be freed? " << std::endl;
-                                                sleep_for(seconds(5));
-                                                std::string coinDecision = "Y";
-                                                int freed = rand()%2;
-                                                if (freed == 1) {
-                                                    std::cout << "SUCCESS! CPU " << 2 << " have been freed! Cancelling STUN effect..." << std::endl;
+                                                bool tookC = true;
+                                                coinFlipChallenge(2,suceed,tookC);
+                                                if (suceed == 1) {
                                                     turn = 2;
-                                                    suceed = 1;
                                                     lightning = 0;
                                                     turnStunned = 0;
-                                                } else {
-                                                    std::cout << "FAIL! CPU " << 2  << " failed the coin flip. CPU " << 2 << " will draw 1 penalty card and suffer STUN effect..." << std::endl;
-                                                    std::cout << "CPU " << 2 << ": FORFEITED TURN!" << std::endl;
-                                                    suceed = 0;
+                                                } else if (suceed == 0) {
                                                     drawCards(p2,1);
-                                                    turn = 3;
-                                                    turnStunned++;
-                                                    if (turnStunned == 3) {
-                                                        turnStunned = 0;
-                                                        lightning = 0;
+                                                    if (numPlay == 4) {
+                                                        turn = 3;
                                                     }
+                                                    expiredStun(2,lightning,turnStunned);
                                                 }
+                                                sleep_for(seconds(3));
                                             } else {
                                                 turn = 2;
                                             }
                                         } else {
                                             if (lightning == 4) {
-                                                std::cout << "CPU " << 4  << " awaiting decision: take the coin flip for a chance to be freed? " << std::endl;
-                                                sleep_for(seconds(5));
-                                                std::string coinDecision = "Y";
-                                                int freed = rand()%2;
-                                                if (freed == 1) {
-                                                    std::cout << "SUCCESS! CPU " << 4 << " have been freed! Cancelling STUN effect..." << std::endl;
+                                                bool tookC = true;
+                                                coinFlipChallenge(4,suceed,tookC);
+                                                if (suceed == 1) {
                                                     turn = 4;
-                                                    suceed = 1;
                                                     lightning = 0;
                                                     turnStunned = 0;
-                                                } else {
-                                                    std::cout << "FAIL! CPU " << 4  << " failed the coin flip. CPU " << 4 << " will draw 1 penalty card and suffer STUN effect..." << std::endl;
-                                                    std::cout << "CPU " << 4 << ": FORFEITED TURN!" << std::endl;
-                                                    suceed = 0;
+                                                } else if (suceed == 0) {
                                                     drawCards(p4,1);
                                                     turn = 3;
-                                                    turnStunned++;
-                                                    if (turnStunned == 3) {
-                                                        turnStunned = 0;
-                                                        lightning = 0;
-                                                    }
+                                                    expiredStun(2,lightning,turnStunned);
                                                 }
+                                                sleep_for(seconds(3));
                                             } else {
                                                 turn = 4;
                                             }
@@ -1891,7 +1752,6 @@ int main() {
                                     }
                                 }
                             }
-                            std::cout << "Color changed to: " << startingCard.getColorCard().getColor() << std::endl;
                         //action card (SKIP, REVERSE, +2)
                         } else if (p1.getDeck().getCardAtPos(pos1-1).getFaceCard().getFace().compare("DRAW2") == 0 or p1.getDeck().getCardAtPos(pos1-1).getFaceCard().getFace().compare("SKIP") == 0 or p1.getDeck().getCardAtPos(pos1-1).getFaceCard().getFace().compare("REVERSE") == 0) {
                             startingCard.changeColorCard(p1.getDeck().getCardAtPos(pos1-1).getColorCard());
@@ -1906,7 +1766,7 @@ int main() {
                                     }
                                 } else {
                                     if (p1.getDeck().getNumberOfCards() == 1) {
-                                        displayEffect(p2.getToken(),startingCard,suceed,true,0);
+                                        displayEffect(p4.getToken(),startingCard,suceed,true,0);
                                     } else {
                                         displayEffect(p4.getToken(),startingCard,suceed,true,lightning);
                                     }
@@ -1921,11 +1781,7 @@ int main() {
                                         if (suceed == 0) {
                                             drawCards(p2,3);
                                             turn = 3;
-                                            turnStunned++;
-                                            if (turnStunned == 3) {
-                                                turnStunned = 0;
-                                                lightning = 0;
-                                            }
+                                            expiredStun(2,lightning,turnStunned);
                                         } else if (suceed == 1) {
                                             turn = 2;
                                             lightning = 0;
@@ -1938,11 +1794,7 @@ int main() {
                                         if (suceed == 0) {
                                             drawCards(p4,3);
                                             turn = 3;
-                                            turnStunned++;
-                                            if (turnStunned == 3) {
-                                                turnStunned = 0;
-                                                lightning = 0;
-                                            }
+                                            expiredStun(4,lightning,turnStunned);
                                         } else if (suceed == 1) {
                                             turn = 4;
                                             lightning = 0;
@@ -1953,7 +1805,16 @@ int main() {
                                         }
                                     }
                                 } else {
-                                    drawCards(p2,2);
+                                    if (suceed == 0) {
+                                        drawCards(p2,3);
+                                        expiredStun(2,lightning,turnStunned);
+                                    } else if (suceed == 1) {
+                                        turn = 2;
+                                        lightning = 0;
+                                        turnStunned = 0;
+                                    } else {
+                                        drawCards(p2,2);
+                                    }
                                 }
                             } else if (startingCard.getFaceCard().getFace().compare("REVERSE") == 0) {
                                 if (numPlay == 4) {
@@ -1976,14 +1837,11 @@ int main() {
                                         turnStunned = 0;
                                     } else if (suceed == 0) {
                                         turn = 3;
-                                        turnStunned++;
-                                        if (turnStunned == 3) {
-                                            turnStunned = 0;
-                                            lightning = 0;
-                                        }
                                         if (clockwise) {
+                                            expiredStun(2,lightning,turnStunned);
                                             drawCards(p2,1);
                                         } else {
+                                            expiredStun(4,lightning,turnStunned);
                                             drawCards(p4,1);
                                         }
                                     } else {
@@ -1996,6 +1854,7 @@ int main() {
                                         turnStunned = 0;
                                     } else if (suceed == 0) {
                                         drawCards(p2,1);
+                                        expiredStun(2,lightning,turnStunned);
                                     }
                                 }
                             }
@@ -2004,55 +1863,37 @@ int main() {
                             actioned = true;
                             if (numPlay == 2 or clockwise == true) {
                                 if (lightning == 2) {
-                                    std::cout << "CPU " << 2  << " awaiting decision: take the coin flip for a chance to be freed? " << std::endl;
-                                    sleep_for(seconds(5));
-                                    int freed = rand()%2;
-                                    if (freed == 1) {
-                                        std::cout << "SUCCESS! CPU " << 2 << " have been freed! Cancelling STUN effect..." << std::endl;
+                                    bool tookC = true;
+                                    coinFlipChallenge(2,suceed,tookC);
+                                    if (suceed == 1) {
                                         turn = 2;
-                                        suceed = 1;
                                         lightning = 0;
                                         turnStunned = 0;
                                     } else {
-                                        std::cout << "FAIL! CPU " << 2  << " failed the coin flip. CPU " << 2 << " will draw 1 penalty card and suffer STUN effect..." << std::endl;
-                                        std::cout << "CPU " << 2 << ": FORFEITED TURN!" << std::endl;
-                                        suceed = 0;
                                         drawCards(p2,1);
                                         if (numPlay == 4) {
                                             turn = 3;
                                         }
-                                        turnStunned++;
-                                        if (turnStunned == 3) {
-                                            turnStunned = 0;
-                                            lightning = 0;
-                                        }
+                                        expiredStun(2,lightning,turnStunned);
                                     }
+                                    sleep_for(seconds(3));
                                 } else {
                                     turn = 2;
                                 }
                             } else {
                                 if (lightning == 4) {
-                                    std::cout << "CPU " << 4  << " awaiting decision: take the coin flip for a chance to be freed? " << std::endl;
-                                    sleep_for(seconds(5));
-                                    int freed = rand()%2;
-                                    if (freed == 1) {
-                                        std::cout << "SUCCESS! CPU " << 4 << " have been freed! Cancelling STUN effect..." << std::endl;
+                                    bool tookC = true;
+                                    coinFlipChallenge(4,suceed,tookC);
+                                    if (suceed == 1) {
                                         turn = 4;
-                                        suceed = 1;
                                         lightning = 0;
                                         turnStunned = 0;
                                     } else {
-                                        std::cout << "FAIL! CPU " << 4  << " failed the coin flip. CPU " << 4 << " will draw 1 penalty card and suffer STUN effect..." << std::endl;
-                                        std::cout << "CPU " << 4 << ": FORFEITED TURN!" << std::endl;
-                                        suceed = 0;
                                         drawCards(p4,1);
                                         turn = 3;
-                                        turnStunned++;
-                                        if (turnStunned == 3) {
-                                            turnStunned = 0;
-                                            lightning = 0;
-                                        }
+                                        expiredStun(4,lightning,turnStunned);
                                     }
+                                    sleep_for(seconds(3));
                                 } else {
                                     turn = 4;
                                 }  
@@ -2113,12 +1954,9 @@ int main() {
                                                     displayEffect(p2.getToken(),startingCard,suceed,true,lightning);
                                                     if (suceed == 0) {
                                                         drawCards(p2,1);
-                                                        cpuChallengeDraw4Process(p1,p2,startingCard,turn,numPlay,startColor,suceed);
-                                                        turnStunned++;
-                                                        if (turnStunned == 3) {
-                                                            turnStunned = 0;
-                                                            lightning = 0;
-                                                        }
+                                                        displayEffect(p2.getToken(),startingCard,suceed);
+                                                        drawCards(p2,4);
+                                                        expiredStun(2,lightning,turnStunned);
                                                     } else {
                                                         turn = 2;
                                                         lightning = 0;
@@ -2137,12 +1975,9 @@ int main() {
                                                     displayEffect(p4.getToken(),startingCard,suceed,true,lightning);
                                                     if (suceed == 0) {
                                                         drawCards(p4,1);
-                                                        cpuChallengeDraw4Process(p1,p4,startingCard,turn,numPlay,startColor,suceed);
-                                                        turnStunned++;
-                                                        if (turnStunned == 3) {
-                                                            turnStunned = 0;
-                                                            lightning = 0;
-                                                        }
+                                                        displayEffect(p4.getToken(),startingCard,suceed);
+                                                        drawCards(p4,4);
+                                                        expiredStun(4,lightning,turnStunned);
                                                     } else {
                                                         turn = 4;
                                                         lightning = 0;
@@ -2162,12 +1997,9 @@ int main() {
                                                 displayEffect(p2.getToken(),startingCard,suceed,true,lightning);
                                                 if (suceed == 0) {
                                                     drawCards(p2,1);
-                                                    cpuChallengeDraw4Process(p1,p2,startingCard,turn,numPlay,startColor,suceed);
-                                                    turnStunned++;
-                                                    if (turnStunned == 3) {
-                                                        turnStunned = 0;
-                                                        lightning = 0;
-                                                    }
+                                                    displayEffect(p2.getToken(),startingCard,suceed);
+                                                    drawCards(p2,4);
+                                                    expiredStun(2,lightning,turnStunned);
                                                 } else {
                                                     turn = 2;
                                                     lightning = 0;
@@ -2183,55 +2015,37 @@ int main() {
                                     actioned = true;
                                     if (clockwise == true or numPlay == 2) {
                                         if (lightning == 2) {
-                                            std::cout << "CPU " << 2  << " awaiting decision: take the coin flip for a chance to be freed? " << std::endl;
-                                            sleep_for(seconds(5));
-                                            std::string coinDecision = "Y";
-                                            int freed = rand()%2;
-                                            if (freed == 1) {
-                                                std::cout << "SUCCESS! CPU " << 2 << " have been freed! Cancelling STUN effect..." << std::endl;
+                                            bool tookC = true;
+                                            coinFlipChallenge(2,suceed,tookC);
+                                            if (suceed == 1) {
                                                 turn = 2;
-                                                suceed = 1;
                                                 lightning = 0;
                                                 turnStunned = 0;
-                                            } else {
-                                                std::cout << "FAIL! CPU " << 2  << " failed the coin flip. CPU " << 2 << " will draw 1 penalty card and suffer STUN effect..." << std::endl;
-                                                std::cout << "CPU " << 2 << ": FORFEITED TURN!" << std::endl;
-                                                suceed = 0;
+                                            } else if (suceed == 0) {
                                                 drawCards(p2,1);
-                                                turn = 3;
-                                                turnStunned++;
-                                                if (turnStunned == 3) {
-                                                    turnStunned = 0;
-                                                    lightning = 0;
+                                                if (numPlay == 4) {
+                                                    turn = 3;
                                                 }
+                                                expiredStun(2,lightning,turnStunned);
                                             }
+                                            sleep_for(seconds(3));
                                         } else {
                                             turn = 2;
                                         }
                                     } else {
                                         if (lightning == 4) {
-                                            std::cout << "CPU " << 4  << " awaiting decision: take the coin flip for a chance to be freed? " << std::endl;
-                                            sleep_for(seconds(5));
-                                            std::string coinDecision = "Y";
-                                            int freed = rand()%2;
-                                            if (freed == 1) {
-                                                std::cout << "SUCCESS! CPU " << 4 << " have been freed! Cancelling STUN effect..." << std::endl;
+                                            bool tookC = true;
+                                            coinFlipChallenge(4,suceed,tookC);
+                                            if (suceed == 1) {
                                                 turn = 4;
-                                                suceed = 1;
                                                 lightning = 0;
                                                 turnStunned = 0;
-                                            } else {
-                                                std::cout << "FAIL! CPU " << 4  << " failed the coin flip. CPU " << 4 << " will draw 1 penalty card and suffer STUN effect..." << std::endl;
-                                                std::cout << "CPU " << 4 << ": FORFEITED TURN!" << std::endl;
-                                                suceed = 0;
+                                            } else if (suceed == 0) {
                                                 drawCards(p4,1);
                                                 turn = 3;
-                                                turnStunned++;
-                                                if (turnStunned == 3) {
-                                                    turnStunned = 0;
-                                                    lightning = 0;
-                                                }
+                                                expiredStun(4,lightning,turnStunned);
                                             }
+                                            sleep_for(seconds(3));
                                         } else {
                                             turn = 4;
                                         }
@@ -2258,55 +2072,37 @@ int main() {
                                             std::cout << "LIGHTNING ALREADY ACTIVE! Now treated as standard WILD card. " << std::endl;
                                             if (clockwise == true or numPlay == 2) {
                                                 if (lightning == 2) {
-                                                    std::cout << "CPU " << 2  << " awaiting decision: take the coin flip for a chance to be freed? " << std::endl;
-                                                    sleep_for(seconds(5));
-                                                    std::string coinDecision = "Y";
-                                                    int freed = rand()%2;
-                                                    if (freed == 1) {
-                                                        std::cout << "SUCCESS! CPU " << 2 << " have been freed! Cancelling STUN effect..." << std::endl;
+                                                    bool tookC = true;
+                                                    coinFlipChallenge(2,suceed,tookC);
+                                                    if (suceed == 1) {
                                                         turn = 2;
-                                                        suceed = 1;
                                                         lightning = 0;
                                                         turnStunned = 0;
-                                                    } else {
-                                                        std::cout << "FAIL! CPU " << 2  << " failed the coin flip. CPU " << 2 << " will draw 1 penalty card and suffer STUN effect..." << std::endl;
-                                                        std::cout << "CPU " << 2 << ": FORFEITED TURN!" << std::endl;
-                                                        suceed = 0;
+                                                    } else if (suceed == 0) {
                                                         drawCards(p2,1);
-                                                        turn = 3;
-                                                        turnStunned++;
-                                                        if (turnStunned == 3) {
-                                                            turnStunned = 0;
-                                                            lightning = 0;
+                                                        if (numPlay == 4) {
+                                                            turn = 3;
                                                         }
+                                                        expiredStun(2,lightning,turnStunned);
                                                     }
+                                                    sleep_for(seconds(3));
                                                 } else {
                                                     turn = 2;
                                                 }
                                             } else {
                                                 if (lightning == 4) {
-                                                    std::cout << "CPU " << 4  << " awaiting decision: take the coin flip for a chance to be freed? " << std::endl;
-                                                    sleep_for(seconds(5));
-                                                    std::string coinDecision = "Y";
-                                                    int freed = rand()%2;
-                                                    if (freed == 1) {
-                                                        std::cout << "SUCCESS! CPU " << 4 << " have been freed! Cancelling STUN effect..." << std::endl;
+                                                    bool tookC = true;
+                                                    coinFlipChallenge(4,suceed,tookC);
+                                                    if (suceed == 1) {
                                                         turn = 4;
-                                                        suceed = 1;
                                                         lightning = 0;
                                                         turnStunned = 0;
-                                                    } else {
-                                                        std::cout << "FAIL! CPU " << 4  << " failed the coin flip. CPU " << 4 << " will draw 1 penalty card and suffer STUN effect..." << std::endl;
-                                                        std::cout << "CPU " << 4 << ": FORFEITED TURN!" << std::endl;
-                                                        suceed = 0;
+                                                    } else if (suceed == 0) {
                                                         drawCards(p4,1);
                                                         turn = 3;
-                                                        turnStunned++;
-                                                        if (turnStunned == 3) {
-                                                            turnStunned = 0;
-                                                            lightning = 0;
-                                                        }
+                                                        expiredStun(4,lightning,turnStunned);
                                                     }
+                                                    sleep_for(seconds(3));
                                                 } else {
                                                     turn = 4;
                                                 }
@@ -2321,9 +2117,17 @@ int main() {
                                 makeWhiteSpace();
                                 if (numPlay == 4) {
                                     if (clockwise == true) {
-                                        displayEffect(p2.getToken(),startingCard,suceed,true,lightning);
+                                        if (p1.getDeck().getNumberOfCards() == 1) {
+                                            displayEffect(p2.getToken(),startingCard,suceed,true,0);
+                                        } else {
+                                            displayEffect(p2.getToken(),startingCard,suceed,true,lightning);
+                                        }
                                     } else {
-                                        displayEffect(p4.getToken(),startingCard,suceed,true,lightning);
+                                        if (p1.getDeck().getNumberOfCards() == 1) {
+                                            displayEffect(p4.getToken(),startingCard,suceed,true,0);
+                                        } else {
+                                            displayEffect(p4.getToken(),startingCard,suceed,true,lightning);
+                                        }
                                     }
                                     turn = 3;
                                 } else {
@@ -2335,11 +2139,7 @@ int main() {
                                             if (suceed == 0) {
                                                 drawCards(p2,3);
                                                 turn = 3;
-                                                turnStunned++;
-                                                if (turnStunned == 3) {
-                                                    turnStunned = 0;
-                                                    lightning = 0;
-                                                }
+                                                expiredStun(2,lightning,turnStunned);
                                             } else if (suceed == 1) {
                                                 turn = 2;
                                                 lightning = 0;
@@ -2352,11 +2152,7 @@ int main() {
                                             if (suceed == 0) {
                                                 drawCards(p4,3);
                                                 turn = 3;
-                                                turnStunned++;
-                                                if (turnStunned == 3) {
-                                                    turnStunned = 0;
-                                                    lightning = 0;
-                                                }
+                                                expiredStun(4,lightning,turnStunned);
                                             } else if (suceed == 1) {
                                                 turn = 4;
                                                 lightning = 0;
@@ -2389,15 +2185,12 @@ int main() {
                                             turnStunned = 0;
                                         } else if (suceed == 0) {
                                             turn = 3;
-                                            turnStunned++;
-                                            if (turnStunned == 3) {
-                                                turnStunned = 0;
-                                                lightning = 0;
-                                            }
                                             if (clockwise) {
                                                 drawCards(p2,1);
+                                                expiredStun(2,lightning,turnStunned);
                                             } else {
                                                 drawCards(p4,1);
+                                                expiredStun(4,lightning,turnStunned);
                                             }
                                         } else {
                                             turn = 3;
@@ -2409,6 +2202,7 @@ int main() {
                                             turnStunned = 0;
                                         } else if (suceed == 0) {
                                             drawCards(p2,1);
+                                            expiredStun(2,lightning,turnStunned);
                                         }
                                     }
                                 }
@@ -2420,52 +2214,37 @@ int main() {
                                 makeWhiteSpace();
                                 if (numPlay == 2 or clockwise == true) {
                                     if (lightning == 2) {
-                                        std::cout << "CPU " << 2  << " awaiting decision: take the coin flip for a chance to be freed? " << std::endl;
-                                        sleep_for(seconds(5));
-                                        int freed = rand()%2;
-                                        if (freed == 1) {
-                                            std::cout << "SUCCESS! CPU " << 2 << " have been freed! Cancelling STUN effect..." << std::endl;
+                                        bool tookC = true;
+                                        coinFlipChallenge(2,suceed,tookC);
+                                        if (suceed == 1) {
                                             turn = 2;
-                                            suceed = 1;
                                             lightning = 0;
                                             turnStunned = 0;
-                                        } else {
-                                            std::cout << "FAIL! CPU " << 2  << " failed the coin flip. CPU " << 2 << " will draw 1 penalty card and suffer STUN effect..." << std::endl;
-                                            std::cout << "CPU " << 2 << ": FORFEITED TURN!" << std::endl;
-                                            suceed = 0;
+                                        } else if (suceed == 0) {
                                             drawCards(p2,1);
-                                            if (numPlay == 2 or clockwise == false) {
-                                                turn = 1;
-                                            } else {
+                                            if (numPlay == 4) {
                                                 turn = 3;
                                             }
-                                            turnStunned++;
-                                            if (turnStunned == 3) {
-                                                turnStunned = 0;
-                                                lightning = 0;
-                                            }
+                                            expiredStun(2,lightning,turnStunned);
                                         }
+                                        sleep_for(seconds(3));
                                     } else {
                                         turn = 2;
                                     }
                                 } else {
                                     if (lightning == 4) {
-                                        std::cout << "CPU " << 4  << " awaiting decision: take the coin flip for a chance to be freed? " << std::endl;
-                                        sleep_for(seconds(5));
-                                        int freed = rand()%2;
-                                        if (freed == 1) {
-                                            std::cout << "SUCCESS! CPU " << 4 << " have been freed! Cancelling STUN effect..." << std::endl;
+                                        bool tookC = true;
+                                        coinFlipChallenge(4,suceed,tookC);
+                                        if (suceed == 1) {
                                             turn = 4;
-                                            suceed = 1;
                                             lightning = 0;
                                             turnStunned = 0;
-                                        } else {
-                                            std::cout << "FAIL! CPU " << 4  << " failed the coin flip. CPU " << 4 << " will draw 1 penalty card and suffer STUN effect..." << std::endl;
-                                            std::cout << "CPU " << 4 << ": FORFEITED TURN!" << std::endl;
-                                            suceed = 0;
+                                        } else if (suceed == 0) {
                                             drawCards(p4,1);
                                             turn = 3;
+                                            expiredStun(4,lightning,turnStunned);
                                         }
+                                        sleep_for(seconds(3));
                                     } else {
                                         turn = 4;
                                     }  
@@ -2477,49 +2256,37 @@ int main() {
                             playedDrew = false;
                             if (numPlay == 2 or clockwise == true) {
                                 if (lightning == 2) {
-                                    std::cout << "CPU " << 2  << " awaiting decision: take the coin flip for a chance to be freed? " << std::endl;
-                                    sleep_for(seconds(5));
-                                    int freed = rand()%2;
-                                    if (freed == 1) {
-                                        std::cout << "SUCCESS! CPU " << 2 << " have been freed! Cancelling STUN effect..." << std::endl;
+                                    bool tookC = true;
+                                    coinFlipChallenge(2,suceed,tookC);
+                                    if (suceed == 1) {
                                         turn = 2;
-                                        suceed = 1;
                                         lightning = 0;
                                         turnStunned = 0;
-                                    } else {
-                                        std::cout << "FAIL! CPU " << 2  << " failed the coin flip. CPU " << 2 << " will draw 1 penalty card and suffer STUN effect..." << std::endl;
-                                        suceed = 0;
+                                    } else if (suceed == 0) {
                                         drawCards(p2,1);
                                         if (numPlay == 4) {
                                             turn = 3;
                                         }
-                                        turnStunned++;
-                                        if (turnStunned == 3) {
-                                            turnStunned = 0;
-                                            lightning = 0;
-                                        }
+                                        expiredStun(2,lightning,turnStunned);
                                     }
+                                    sleep_for(seconds(3));
                                 } else {
                                     turn = 2;
                                 }
                             } else {
                                 if (lightning == 4) {
-                                    std::cout << "CPU " << 4  << " awaiting decision: take the coin flip for a chance to be freed? " << std::endl;
-                                    sleep_for(seconds(5));
-                                    int freed = rand()%2;
-                                    if (freed == 1) {
-                                        std::cout << "SUCCESS! CPU " << 4 << " have been freed! Cancelling STUN effect..." << std::endl;
+                                    bool tookC = true;
+                                    coinFlipChallenge(4,suceed,tookC);
+                                    if (suceed == 1) {
                                         turn = 4;
-                                        suceed = 1;
                                         lightning = 0;
                                         turnStunned = 0;
-                                    } else {
-                                        std::cout << "FAIL! CPU " << 4  << " failed the coin flip. CPU " << 4 << " will draw 1 penalty card and suffer STUN effect..." << std::endl;
-                                        std::cout << "CPU " << 4 << ": FORFEITED TURN!" << std::endl;
-                                        suceed = 0;
+                                    } else if (suceed == 0) {
                                         drawCards(p4,1);
                                         turn = 3;
+                                        expiredStun(4,lightning,turnStunned);
                                     }
+                                    sleep_for(seconds(3));
                                 } else {
                                     turn = 4;
                                 }  
@@ -2535,55 +2302,37 @@ int main() {
                         playedDrew = false;
                         if (numPlay == 2 or clockwise == true) {
                             if (lightning == 2) {
-                                std::cout << "CPU " << 2  << " awaiting decision: take the coin flip for a chance to be freed? " << std::endl;
-                                sleep_for(seconds(5));
-                                int freed = rand()%2;
-                                if (freed == 1) {
-                                    std::cout << "SUCCESS! CPU " << 2 << " have been freed! Cancelling STUN effect..." << std::endl;
+                                bool tookC = true;
+                                coinFlipChallenge(2,suceed,tookC);
+                                if (suceed == 1) {
                                     turn = 2;
-                                    suceed = 1;
                                     lightning = 0;
                                     turnStunned = 0;
-                                } else {
-                                    std::cout << "FAIL! CPU " << 2  << " failed the coin flip. CPU " << 2 << " will draw 1 penalty card and suffer STUN effect..." << std::endl;
-                                    std::cout << "CPU " << 2 << ": FORFEITED TURN!" << std::endl;
-                                    suceed = 0;
+                                } else if (suceed == 0) {
                                     drawCards(p2,1);
                                     if (numPlay == 4) {
                                         turn = 3;
                                     }
-                                    turnStunned++;
-                                    if (turnStunned == 3) {
-                                        turnStunned = 0;
-                                        lightning = 0;
-                                    }
+                                    expiredStun(2,lightning,turnStunned);
                                 }
+                                sleep_for(seconds(3));
                             } else {
                                 turn = 2;
                             }
                         } else {
                             if (lightning == 4) {
-                                std::cout << "CPU " << 4  << " awaiting decision: take the coin flip for a chance to be freed? " << std::endl;
-                                sleep_for(seconds(5));
-                                int freed = rand()%2;
-                                if (freed == 1) {
-                                    std::cout << "SUCCESS! CPU " << 4 << " have been freed! Cancelling STUN effect..." << std::endl;
+                                bool tookC = true;
+                                coinFlipChallenge(4,suceed,tookC);
+                                if (suceed == 1) {
                                     turn = 4;
-                                    suceed = 1;
                                     lightning = 0;
                                     turnStunned = 0;
-                                } else {
-                                    std::cout << "FAIL! CPU " << 4  << " failed the coin flip. CPU " << 4 << " will draw 1 penalty card and suffer STUN effect..." << std::endl;
-                                    std::cout << "CPU " << 4 << ": FORFEITED TURN!" << std::endl;
-                                    suceed = 0;
+                                } else if (suceed == 0) {
                                     drawCards(p4,1);
                                     turn = 3;
-                                    turnStunned++;
-                                    if (turnStunned == 3) {
-                                        turnStunned = 0;
-                                        lightning = 0;
-                                    }
+                                    expiredStun(4,lightning,turnStunned);
                                 }
+                                sleep_for(seconds(3));
                             } else {
                                 turn = 4;
                             }  
@@ -2601,32 +2350,24 @@ int main() {
                 sleep_for(seconds(2));
             //CPU 2's turn
             } else if (turn == 2){
-                verifyUNOs(shoutedUno1,shoutedUno2,shoutedUno3,shoutedUno4,c1,c2,c3,c4,p1);
+                verifyUNOs(shoutedUno1,p1,c1);
                 if (lightning == 2) {
-                    std::cout << "CPU " << 2  << " awaiting decision: take the coin flip for a chance to be freed? " << std::endl;
-                    sleep_for(seconds(5));
-                    int freed = rand()%2;
-                    if (freed == 1) {
-                        std::cout << "SUCCESS! CPU " << 2 << " have been freed! Cancelling STUN effect..." << std::endl;
+                    bool tookC = true;
+                    coinFlipChallenge(2,suceed,tookC);
+                    if (suceed == 1) {
                         turn = 2;
-                        suceed = 1;
                         lightning = 0;
                         turnStunned = 0;
-                    } else {
-                        std::cout << "FAIL! CPU " << 2  << " failed the coin flip. CPU " << 2 << " will draw 1 penalty card and suffer STUN effect..." << std::endl;
-                        std::cout << "CPU " << 2 << ": FORFEITED TURN!" << std::endl;
-                        suceed = 0;
+                    } else if (suceed == 0) {
                         drawCards(p2,1);
                         if (numPlay == 4) {
                             turn = 3;
                         }
-                        turnStunned++;
-                        if (turnStunned == 3) {
-                            turnStunned = 0;
-                            lightning = 0;
-                        }
+                        expiredStun(2,lightning,turnStunned);
+                        sleep_for(seconds(3));
                         continue;
                     }
+                    sleep_for(seconds(3));
                 }
                 actioned = false;
                 p1 = Player(Deck(sort(p1.getDeck().getCards())),1,pt1,rounds1);
@@ -2637,6 +2378,10 @@ int main() {
                 positions2 = getPlayablePositions(p2.getDeck(),startingCard);
                 std::cout << "CPU 2's turn! " << std::endl;
                 int positioned = -1;
+                if (p1.getDeck().getNumberOfCards() >= 2) {
+                    shoutedUno1 = false;
+                    c1 = 0;
+                }
                 //CPU 2 has a playable card
                 if (p2.getDeck().hasPlayableCard(startingCard) == true) {
                     if (p2.getDeck().getNumberOfCards() == 2) {
@@ -2664,15 +2409,13 @@ int main() {
                                         displayEffect(p3.getToken(),startingCard,suceed);
                                     } else {
                                         if (lightning == 3) {
-                                            displayEffect(p2.getToken(),startingCard,suceed,true,lightning);
+                                            displayEffect(p3.getToken(),startingCard,suceed,true,lightning);
                                             if (suceed == 0) {
                                                 drawCards(p3,1);
-                                                cpuChallengeDraw4Process(p2,p3,startingCard,turn,numPlay,startColor,suceed);
-                                                turnStunned++;
-                                                if (turnStunned == 3) {
-                                                    turnStunned = 0;
-                                                    lightning = 0;
-                                                }
+                                                displayEffect(p3.getToken(),startingCard,suceed);
+                                                drawCards(p3,4);
+                                                expiredStun(3,lightning,turnStunned);
+
                                             } else {
                                                 turn = 3;
                                                 turnStunned = 0;
@@ -2690,13 +2433,10 @@ int main() {
                                         if (lightning == 1) {
                                             displayEffect(p1.getToken(),startingCard,suceed,true,lightning);
                                             if (suceed == 0) {
-                                                drawCards(p2,1);
-                                                playerChallengeDraw4Process(p2,p1,startingCard,turn,numPlay,startColor,suceed);
-                                                turnStunned++;
-                                                if (turnStunned == 3) {
-                                                    turnStunned = 0;
-                                                    lightning = 0;
-                                                }
+                                                drawCards(p1,1);
+                                                displayEffect(p1.getToken(),startingCard,suceed);
+                                                drawCards(p1,4);
+                                                expiredStun(1,lightning,turnStunned);
                                             } else {
                                                 turn = 1;
                                                 lightning = 0;
@@ -2715,13 +2455,10 @@ int main() {
                                     if (lightning == 1) {
                                         displayEffect(p1.getToken(),startingCard,suceed,true,lightning);
                                         if (suceed == 0) {
-                                            drawCards(p2,1);
-                                            playerChallengeDraw4Process(p2,p1,startingCard,turn,numPlay,startColor,suceed);
-                                            turnStunned++;
-                                            if (turnStunned == 3) {
-                                                turnStunned = 0;
-                                                lightning = 0;
-                                            }
+                                            drawCards(p1,1);
+                                            displayEffect(p1.getToken(),startingCard,suceed);
+                                            drawCards(p1,4);
+                                            expiredStun(1,lightning,turnStunned);
                                         } else {
                                             turn = 1;
                                             lightning = 0;
@@ -2735,58 +2472,44 @@ int main() {
                             startingCard.changeFaceCard(Face("WILD"));
                             if (numPlay == 2 or clockwise == false) {
                                 if (lightning == 1) {
-                                    std::string coinDecision = "";
-                                    std::cout << "Player 1, do you wish to take a coin flip for a chance to be freed? (+0/1 Y, +0 N) (Y/N): ";
-                                    std::cin >> coinDecision;
-                                    if (coinDecision == "Y") {
-                                        std::cout << "Your fate is in God's hands now..." << std::endl;
-                                        sleep_for(seconds(5));
-                                        int freed = rand()%2;
-                                        if (freed == 1) {
-                                            std::cout << "SUCCESS! Player 1 have been freed! Cancelling STUN effect..." << std::endl;
-                                            suceed = 1;
+                                    bool tookC = true;
+                                    coinFlipChallenge(1,suceed,tookC);
+                                    if (tookC == false) {
+                                        expiredStun(1,lightning,turnStunned);
+                                        if (numPlay == 4) {
+                                            turn = 4;
+                                        }
+                                    } else {
+                                        if (suceed == 1) {
                                             turn = 1;
                                             lightning = 0;
                                             turnStunned = 0;
                                         } else {
-                                            std::cout << "FAIL! Player 1 failed the coin flip. Player 1 will draw 1 penalty card and suffer STUN effect..." << std::endl;
-                                            suceed = 0;
                                             drawCards(p1,1);
-                                            turn = 4;
-                                            turnStunned++;
-                                            if (turnStunned == 3) {
-                                                turnStunned = 0;
-                                                lightning = 0;
+                                            if (numPlay == 4) {
+                                                turn = 4;
                                             }
+                                            expiredStun(1,lightning,turnStunned);
                                         }
-                                    } else {
-                                        std::cout << "Player 1 didn't take the coin flip. Player 1 will suffer STUN effect..." << std::endl;
                                     }
+                                    sleep_for(seconds(3));
                                 } else {
                                     turn = 1;
                                 }
                             } else {
                                 if (lightning == 3) {
-                                    std::cout << "CPU " << 3  << " awaiting decision: take the coin flip for a chance to be freed? " << std::endl;
-                                    sleep_for(seconds(5));
-                                    int freed = rand()%2;
-                                    if (freed == 1) {
-                                        std::cout << "SUCCESS! CPU " << 3 << " have been freed! Cancelling STUN effect..." << std::endl;
+                                    bool tookC = true;
+                                    coinFlipChallenge(3,suceed,tookC);
+                                    if (suceed == 1) {
                                         turn = 3;
-                                        suceed = 1;
                                         lightning = 0;
                                         turnStunned = 0;
-                                    } else {
-                                        std::cout << "FAIL! CPU " << 3  << " failed the coin flip. CPU " << 3 << " will draw 1 penalty card and suffer STUN effect..." << std::endl;
-                                        suceed = 0;
+                                    } else if (suceed == 0) {
                                         drawCards(p3,1);
                                         turn = 4;
-                                        turnStunned++;
-                                        if (turnStunned == 3) {
-                                            turnStunned = 0;
-                                            lightning = 0;
-                                        }
+                                        expiredStun(3,lightning,turnStunned);
                                     }
+                                    sleep_for(seconds(3));
                                 } else {
                                     turn = 3;
                                 }
@@ -2813,60 +2536,44 @@ int main() {
                                     std::cout << "LIGHTNING ALREADY ACTIVE! Now treated as standard WILD card. " << std::endl;
                                     if (numPlay == 4 and clockwise == true) {
                                         if (lightning == 3) {
-                                            std::cout << "CPU " << 3  << " awaiting decision: take the coin flip for a chance to be freed? " << std::endl;
-                                            sleep_for(seconds(5));
-                                            int freed = rand()%2;
-                                            if (freed == 1) {
-                                                std::cout << "SUCCESS! CPU " << 3 << " have been freed! Cancelling STUN effect..." << std::endl;
-                                                turn = 2;
-                                                suceed = 1;
+                                            bool tookC = true;
+                                            coinFlipChallenge(3,suceed,tookC);
+                                            if (suceed == 1) {
+                                                turn = 3;
                                                 lightning = 0;
                                                 turnStunned = 0;
-                                            } else {
-                                                std::cout << "FAIL! CPU " << 3  << " failed the coin flip. CPU " << 3 << " will draw 1 penalty card and suffer STUN effect..." << std::endl;
-                                                suceed = 0;
-                                                drawCards(p2,1);
-                                                if (numPlay == 4) {
-                                                    turn = 4;
-                                                }
-                                                turnStunned++;
-                                                if (turnStunned == 3) {
-                                                    turnStunned = 0;
-                                                    lightning = 0;
-                                                }
+                                            } else if (suceed == 0) {
+                                                drawCards(p3,1);
+                                                turn = 4;
+                                                expiredStun(3,lightning,turnStunned);
                                             }
+                                            sleep_for(seconds(3));
                                         } else {
                                             turn = 3;
                                         }
                                     }  else {
                                         if (lightning == 1) {
-                                            std::string coinDecision = "";
-                                            std::cout << "Player 1, do you wish to take a coin flip for a chance to be freed? (+0/1 Y, +0 N) (Y/N): ";
-                                            std::cin >> coinDecision;
-                                            if (coinDecision == "Y") {
-                                                std::cout << "Your fate is in God's hands now..." << std::endl;
-                                                sleep_for(seconds(5));
-                                                int freed = rand()%2;
-                                                if (freed == 1) {
-                                                    std::cout << "SUCCESS! Player 1 have been freed! Cancelling STUN effect..." << std::endl;
-                                                    suceed = 1;
+                                            bool tookC = true;
+                                            coinFlipChallenge(1,suceed,tookC);
+                                            if (tookC == false) {
+                                                expiredStun(1,lightning,turnStunned);
+                                                if (numPlay == 4) {
+                                                    turn = 4;
+                                                }
+                                            } else {
+                                                if (suceed == 1) {
                                                     turn = 1;
                                                     lightning = 0;
                                                     turnStunned = 0;
                                                 } else {
-                                                    std::cout << "FAIL! Player 1 failed the coin flip. Player 1 will draw 1 penalty card and suffer STUN effect..." << std::endl;
-                                                    suceed = 0;
                                                     drawCards(p1,1);
-                                                    turn = 4;
-                                                    turnStunned++;
-                                                    if (turnStunned == 3) {
-                                                        turnStunned = 0;
-                                                        lightning = 0;
+                                                    if (numPlay == 4) {
+                                                        turn = 4;
                                                     }
+                                                    expiredStun(1,lightning,turnStunned);
                                                 }
-                                            } else {
-                                                std::cout << "Player 1 didn't take the coin flip. Player 1 will suffer STUN effect..." << std::endl;
                                             }
+                                            sleep_for(seconds(3));
                                         } else {
                                             turn = 1;
                                         }
@@ -2880,9 +2587,17 @@ int main() {
                         startingCard.changeFaceCard(p2.getDeck().getCardAtPos(positioned-1).getFaceCard());
                         if (numPlay == 4) {
                             if (clockwise == true) {
-                                displayEffect(p3.getToken(),startingCard,suceed,true,lightning);
+                                if (p2.getDeck().getNumberOfCards() == 1) {
+                                    displayEffect(p3.getToken(),startingCard,suceed,true,0);
+                                } else {
+                                    displayEffect(p3.getToken(),startingCard,suceed,true,lightning);
+                                }
                             } else {
-                                displayEffect(p1.getToken(),startingCard,suceed,true,lightning);
+                                if (p2.getDeck().getNumberOfCards() == 1) {
+                                    displayEffect(p1.getToken(),startingCard,suceed,true,0);
+                                } else {
+                                    displayEffect(p1.getToken(),startingCard,suceed,true,lightning);
+                                }
                             }
                             turn = 4;
                         } else {
@@ -2894,11 +2609,7 @@ int main() {
                                     if (suceed == 0) {
                                         drawCards(p3,3);
                                         turn = 4;
-                                        turnStunned++;
-                                        if (turnStunned == 3) {
-                                            turnStunned = 0;
-                                            lightning = 0;
-                                        }
+                                        expiredStun(3,lightning,turnStunned);
                                     } else if (suceed == 1) {
                                         turn = 3;
                                         lightning = 0;
@@ -2911,11 +2622,7 @@ int main() {
                                     if (suceed == 0) {
                                         drawCards(p1,3);
                                         turn = 4;
-                                        turnStunned++;
-                                        if (turnStunned == 3) {
-                                            turnStunned = 0;
-                                            lightning = 0;
-                                        }
+                                        expiredStun(1,lightning,turnStunned);
                                     } else if (suceed == 1) {
                                         turn = 1;
                                         lightning = 0;
@@ -2928,11 +2635,7 @@ int main() {
                             } else {
                                 if (suceed == 0) {
                                     drawCards(p1,3);
-                                    turnStunned++;
-                                    if (turnStunned == 3) {
-                                        turnStunned = 0;
-                                        lightning = 0;
-                                    }
+                                    expiredStun(1,lightning,turnStunned);
                                 } else if (suceed == 1) {
                                     turn = 1;
                                     lightning = 0;
@@ -2953,11 +2656,6 @@ int main() {
                         } else if (startingCard.getFaceCard().getFace().compare("SKIP") == 0) {
                             if (numPlay == 4) {
                                 if (suceed == 1) {
-                                    turnStunned++;
-                                    if (turnStunned == 3) {
-                                        turnStunned = 0;
-                                        lightning = 0;
-                                    }
                                     if (clockwise) {
                                         turn = 3;
                                     } else {
@@ -2969,8 +2667,10 @@ int main() {
                                     turn = 4;
                                     if (clockwise) {
                                         drawCards(p3,1);
+                                        expiredStun(3,lightning,turnStunned);
                                     } else {
                                         drawCards(p1,1);
+                                        expiredStun(1,lightning,turnStunned);
                                     }
                                 } else {
                                     turn = 4;
@@ -2982,11 +2682,7 @@ int main() {
                                     turnStunned = 0;
                                 } else if (suceed == 0) {
                                     drawCards(p1,1);
-                                    turnStunned++;
-                                    if (turnStunned == 3) {
-                                        turnStunned = 0;
-                                        lightning = 0;
-                                    }
+                                    expiredStun(1,lightning,turnStunned);
                                 }
                             }
                         }
@@ -2996,67 +2692,53 @@ int main() {
                         startingCard.changeFaceCard(p2.getDeck().getCardAtPos(positioned-1).getFaceCard());
                         if (numPlay == 4 and clockwise == true) {
                             if (lightning == 3) {
-                                std::cout << "CPU " << 3  << " awaiting decision: take the coin flip for a chance to be freed? " << std::endl;
-                                sleep_for(seconds(5));
-                                int freed = rand()%2;
-                                if (freed == 1) {
-                                    std::cout << "SUCCESS! CPU " << 3 << " have been freed! Cancelling STUN effect..." << std::endl;
+                                bool tookC = true;
+                                coinFlipChallenge(3,suceed,tookC);
+                                if (suceed == 1) {
                                     turn = 3;
-                                    suceed = 1;
                                     lightning = 0;
                                     turnStunned = 0;
-                                } else {
-                                    std::cout << "FAIL! CPU " << 3  << " failed the coin flip. CPU " << 3 << " will draw 1 penalty card and suffer STUN effect..." << std::endl;
-                                    std::cout << "CPU " << 3 << ": FORFEITED TURN!" << std::endl;
-                                    suceed = 0;
-                                    drawCards(p2,1);
-                                    if (numPlay == 4) {
-                                        turn = 4;
-                                    }
-                                    turnStunned++;
-                                    if (turnStunned == 3) {
-                                        turnStunned = 0;
-                                        lightning = 0;
-                                    }
+                                } else if (suceed == 0) {
+                                    drawCards(p3,1);
+                                    turn = 4;
+                                    expiredStun(3,lightning,turnStunned);
                                 }
+                                sleep_for(seconds(3));
                             } else {
                                 turn = 3;
                             }
                         } else {
                             if (lightning == 1) {
-                                std::string coinDecision = "";
-                                std::cout << "Player 1, do you wish to take a coin flip for a chance to be freed? (+0/1 Y, +0 N) (Y/N): ";
-                                std::cin >> coinDecision;
-                                if (coinDecision == "Y") {
-                                    std::cout << "Your fate is in God's hands now..." << std::endl;
-                                    sleep_for(seconds(5));
-                                    int freed = rand()%2;
-                                    if (freed == 1) {
-                                        std::cout << "SUCCESS! Player 1 have been freed! Cancelling STUN effect..." << std::endl;
-                                        suceed = 1;
+                                bool tookC = true;
+                                coinFlipChallenge(1,suceed,tookC);
+                                if (tookC == false) {
+                                    expiredStun(1,lightning,turnStunned);
+                                    if (numPlay == 4) {
+                                        turn = 4;
+                                    }
+                                } else {
+                                    if (suceed == 1) {
                                         turn = 1;
                                         lightning = 0;
                                         turnStunned = 0;
                                     } else {
-                                        std::cout << "FAIL! Player 1 failed the coin flip. Player 1 will draw 1 penalty card and suffer STUN effect..." << std::endl;
-                                        suceed = 0;
                                         drawCards(p1,1);
-                                        turn = 4;
-                                        turnStunned++;
-                                        if (turnStunned == 3) {
-                                            turnStunned = 0;
-                                            lightning = 0;
+                                        if (numPlay == 4) {
+                                            turn = 4;
                                         }
+                                        expiredStun(1,lightning,turnStunned);
                                     }
-                                } else {
-                                    std::cout << "Player 1 didn't take the coin flip. Player 1 will suffer STUN effect..." << std::endl;
                                 }
+                                sleep_for(seconds(3));
                             } else {
                                 turn = 1;
                             }
                         }
                     }
                     p2.placeCard(positioned-1);
+                    if (p2.getDeck().getNumberOfCards() == 1) {
+                        std::cout << "CPU 2: UNO!" << std::endl;
+                    }
                 //No playable card
                 } else {
                     sleep_for(seconds(3));
@@ -3084,15 +2766,12 @@ int main() {
                                             displayEffect(p3.getToken(),startingCard,suceed);
                                         } else {
                                             if (lightning == 3) {
-                                                displayEffect(p2.getToken(),startingCard,suceed,true,lightning);
+                                                displayEffect(p3.getToken(),startingCard,suceed,true,lightning);
                                                 if (suceed == 0) {
                                                     drawCards(p3,1);
-                                                    cpuChallengeDraw4Process(p2,p3,startingCard,turn,numPlay,startColor,suceed);
-                                                    turnStunned++;
-                                                    if (turnStunned == 3) {
-                                                        turnStunned = 0;
-                                                        lightning = 0;
-                                                    }
+                                                    displayEffect(p3.getToken(),startingCard,suceed);
+                                                    drawCards(p3,4);
+                                                    expiredStun(3,lightning,turnStunned);
                                                 } else {
                                                     turn = 3;
                                                     lightning = 0;
@@ -3110,8 +2789,10 @@ int main() {
                                             if (lightning == 1) {
                                                 displayEffect(p1.getToken(),startingCard,suceed,true,lightning);
                                                 if (suceed == 0) {
-                                                    drawCards(p2,1);
-                                                    playerChallengeDraw4Process(p2,p1,startingCard,turn,numPlay,startColor,suceed);
+                                                    drawCards(p1,1);
+                                                    displayEffect(p1.getToken(),startingCard,suceed);
+                                                    drawCards(p1,4);
+                                                    expiredStun(1,lightning,turnStunned);
                                                 } else {
                                                     turn = 1;
                                                     lightning = 0;
@@ -3129,8 +2810,10 @@ int main() {
                                         if (lightning == 1) {
                                             displayEffect(p1.getToken(),startingCard,suceed,true,lightning);
                                             if (suceed == 0) {
-                                                drawCards(p2,1);
-                                                playerChallengeDraw4Process(p2,p1,startingCard,turn,numPlay,startColor,suceed);
+                                                drawCards(p1,1);
+                                                displayEffect(p1.getToken(),startingCard,suceed);
+                                                drawCards(p1,4);
+                                                expiredStun(1,lightning,turnStunned);
                                             } else {
                                                 turn = 1;
                                                 lightning = 0;
@@ -3145,46 +2828,44 @@ int main() {
                                 startingCard.changeFaceCard(Face("WILD"));
                                 if (numPlay == 2 or clockwise == false) {
                                     if (lightning == 1) {
-                                        std::string coinDecision = "";
-                                        std::cout << "Player 1, do you wish to take a coin flip for a chance to be freed? (+0/1 Y, +0 N) (Y/N): ";
-                                        std::cin >> coinDecision;
-                                        if (coinDecision == "Y") {
-                                            std::cout << "Your fate is in God's hands now..." << std::endl;
-                                            sleep_for(seconds(5));
-                                            int freed = rand()%2;
-                                            if (freed == 1) {
-                                                std::cout << "SUCCESS! Player 1 have been freed! Cancelling STUN effect..." << std::endl;
-                                                suceed = 1;
-                                                turn = 1;
-                                                lightning = 0;
-                                            } else {
-                                                std::cout << "FAIL! Player 1 failed the coin flip. Player 1 will draw 1 penalty card and suffer STUN effect..." << std::endl;
-                                                suceed = 0;
-                                                drawCards(p1,1);
+                                        bool tookC = true;
+                                        coinFlipChallenge(1,suceed,tookC);
+                                        if (tookC == false) {
+                                            expiredStun(1,lightning,turnStunned);
+                                            if (numPlay == 4) {
                                                 turn = 4;
                                             }
                                         } else {
-                                            std::cout << "Player 1 didn't take the coin flip. Player 1 will suffer STUN effect..." << std::endl;
+                                            if (suceed == 1) {
+                                                turn = 1;
+                                                lightning = 0;
+                                                turnStunned = 0;
+                                            } else {
+                                                drawCards(p1,1);
+                                                if (numPlay == 4) {
+                                                    turn = 4;
+                                                }
+                                                expiredStun(1,lightning,turnStunned);
+                                            }
                                         }
+                                        sleep_for(seconds(3));
                                     } else {
                                         turn = 1;
                                     }
                                 } else {
                                     if (lightning == 3) {
-                                        std::cout << "CPU " << 3  << " awaiting decision: take the coin flip for a chance to be freed? " << std::endl;
-                                        sleep_for(seconds(5));
-                                        int freed = rand()%2;
-                                        if (freed == 1) {
-                                            std::cout << "SUCCESS! CPU " << 3 << " have been freed! Cancelling STUN effect..." << std::endl;
+                                        bool tookC = true;
+                                        coinFlipChallenge(3,suceed,tookC);
+                                        if (suceed == 1) {
                                             turn = 3;
-                                            suceed = 1;
                                             lightning = 0;
-                                        } else {
-                                            std::cout << "FAIL! CPU " << 3  << " failed the coin flip. CPU " << 3 << " will draw 1 penalty card and suffer STUN effect..." << std::endl;
-                                            suceed = 0;
+                                            turnStunned = 0;
+                                        } else if (suceed == 0) {
                                             drawCards(p3,1);
                                             turn = 4;
+                                            expiredStun(3,lightning,turnStunned);
                                         }
+                                        sleep_for(seconds(3));
                                     } else {
                                         turn = 3;
                                     }
@@ -3205,52 +2886,50 @@ int main() {
                                     }
                                     turnStunned = 1;
                                 } else {
-                                    if (p1.getDeck().getNumberOfCards() == 1) {
+                                    if (p2.getDeck().getNumberOfCards() == 1) {
                                         std::cout << "Last card of the game! Now treated as standard WILD card. " << std::endl;
                                     } else {
                                         std::cout << "LIGHTNING ALREADY ACTIVE! Now treated as standard WILD card. " << std::endl;
                                         if (numPlay == 2 or clockwise == false) {
                                             if (lightning == 1) {
-                                                std::string coinDecision = "";
-                                                std::cout << "Player 1, do you wish to take a coin flip for a chance to be freed? (+0/1 Y, +0 N) (Y/N): ";
-                                                std::cin >> coinDecision;
-                                                if (coinDecision == "Y") {
-                                                    std::cout << "Your fate is in God's hands now..." << std::endl;
-                                                    sleep_for(seconds(5));
-                                                    int freed = rand()%2;
-                                                    if (freed == 1) {
-                                                        std::cout << "SUCCESS! Player 1 have been freed! Cancelling STUN effect..." << std::endl;
-                                                        suceed = 1;
-                                                        turn = 1;
-                                                        lightning = 0;
-                                                    } else {
-                                                        std::cout << "FAIL! Player 1 failed the coin flip. Player 1 will draw 1 penalty card and suffer STUN effect..." << std::endl;
-                                                        suceed = 0;
-                                                        drawCards(p1,1);
+                                                bool tookC = true;
+                                                coinFlipChallenge(1,suceed,tookC);
+                                                if (tookC == false) {
+                                                    expiredStun(1,lightning,turnStunned);
+                                                    if (numPlay == 4) {
                                                         turn = 4;
                                                     }
                                                 } else {
-                                                    std::cout << "Player 1 didn't take the coin flip. Player 1 will suffer STUN effect..." << std::endl;
+                                                    if (suceed == 1) {
+                                                        turn = 1;
+                                                        lightning = 0;
+                                                        turnStunned = 0;
+                                                    } else {
+                                                        drawCards(p1,1);
+                                                        if (numPlay == 4) {
+                                                            turn = 4;
+                                                        }
+                                                        expiredStun(1,lightning,turnStunned);
+                                                    }
                                                 }
+                                                sleep_for(seconds(3));
                                             } else {
                                                 turn = 1;
                                             }
                                         } else {
                                             if (lightning == 3) {
-                                                std::cout << "CPU " << 3  << " awaiting decision: take the coin flip for a chance to be freed? " << std::endl;
-                                                sleep_for(seconds(5));
-                                                int freed = rand()%2;
-                                                if (freed == 1) {
-                                                    std::cout << "SUCCESS! CPU " << 3 << " have been freed! Cancelling STUN effect..." << std::endl;
+                                                bool tookC = true;
+                                                coinFlipChallenge(3,suceed,tookC);
+                                                if (suceed == 1) {
                                                     turn = 3;
-                                                    suceed = 1;
                                                     lightning = 0;
-                                                } else {
-                                                    std::cout << "FAIL! CPU " << 3  << " failed the coin flip. CPU " << 3 << " will draw 1 penalty card and suffer STUN effect..." << std::endl;
-                                                    suceed = 0;
+                                                    turnStunned = 0;
+                                                } else if (suceed == 0) {
                                                     drawCards(p3,1);
                                                     turn = 4;
+                                                    expiredStun(3,lightning,turnStunned);
                                                 }
+                                                sleep_for(seconds(3));
                                             } else {
                                                 turn = 3;
                                             }
@@ -3264,9 +2943,17 @@ int main() {
                             startingCard.changeFaceCard(p2.getDeck().getCardAtPos(p2.getDeck().getNumberOfCards()-1).getFaceCard());
                             if (numPlay == 4) {
                                 if (clockwise == true) {
-                                    displayEffect(p3.getToken(),startingCard,suceed,true,lightning);
+                                    if (p2.getDeck().getNumberOfCards() == 1) {
+                                        displayEffect(p3.getToken(),startingCard,suceed,true,0);
+                                    } else {
+                                        displayEffect(p3.getToken(),startingCard,suceed,true,lightning);
+                                    }
                                 } else {
-                                    displayEffect(p1.getToken(),startingCard,suceed,true,lightning);
+                                    if (p2.getDeck().getNumberOfCards() == 1) {
+                                        displayEffect(p1.getToken(),startingCard,suceed,true,0);
+                                    } else {
+                                        displayEffect(p1.getToken(),startingCard,suceed,true,lightning);
+                                    }
                                 }
                                 turn = 4;
                             } else {
@@ -3278,11 +2965,7 @@ int main() {
                                         if (suceed == 0) {
                                             drawCards(p3,3);
                                             turn = 4;
-                                            turnStunned++;
-                                            if (turnStunned == 3) {
-                                                turnStunned = 0;
-                                                lightning = 0;
-                                            }
+                                            expiredStun(3,lightning,turnStunned);
                                         } else if (suceed == 1) {
                                             turn = 3;
                                             lightning = 0;
@@ -3295,11 +2978,7 @@ int main() {
                                         if (suceed == 0) {
                                             drawCards(p1,3);
                                             turn = 4;
-                                            turnStunned++;
-                                            if (turnStunned == 3) {
-                                                turnStunned = 0;
-                                                lightning = 0;
-                                            }
+                                            expiredStun(1,lightning,turnStunned);
                                         } else if (suceed == 1) {
                                             turn = 1;
                                             lightning = 0;
@@ -3312,11 +2991,7 @@ int main() {
                                 } else {
                                     if (suceed == 0) {
                                         drawCards(p1,3);
-                                        turnStunned++;
-                                        if (turnStunned == 3) {
-                                            turnStunned = 0;
-                                            lightning = 0;
-                                        }
+                                        expiredStun(1,lightning,turnStunned);
                                     } else if (suceed == 1) {
                                         turn = 1;
                                         lightning = 0;
@@ -3345,15 +3020,12 @@ int main() {
                                         turnStunned = 0;
                                     } else if (suceed == 0) {
                                         turn = 4;
-                                        turnStunned++;
-                                        if (turnStunned == 3) {
-                                            turnStunned = 0;
-                                            lightning = 0;
-                                        }
                                         if (clockwise) {
                                             drawCards(p3,1);
+                                            expiredStun(3,lightning,turnStunned);
                                         } else {
                                             drawCards(p1,1);
+                                            expiredStun(1,lightning,turnStunned);
                                         }
                                     } else {
                                         turn = 4;
@@ -3365,11 +3037,7 @@ int main() {
                                         turnStunned = 0;
                                     } else if (suceed == 0) {
                                         drawCards(p1,1);
-                                        turnStunned++;
-                                        if (turnStunned == 3) {
-                                            turnStunned = 0;
-                                            lightning = 0;
-                                        }
+                                        expiredStun(1,lightning,turnStunned);
                                     }
                                 }
                             }
@@ -3377,50 +3045,55 @@ int main() {
                         } else {
                             startingCard.changeColorCard(p2.getDeck().getCardAtPos(p2.getDeck().getNumberOfCards()-1).getColorCard());
                             startingCard.changeFaceCard(p2.getDeck().getCardAtPos(p2.getDeck().getNumberOfCards()-1).getFaceCard());
-                            if (numPlay == 4) {
-                                if (suceed == 1) {
-                                    if (clockwise) {
+                            if (numPlay == 4 and clockwise == true) {
+                                if (lightning == 3) {
+                                    bool tookC = true;
+                                    coinFlipChallenge(3,suceed,tookC);
+                                    if (suceed == 1) {
                                         turn = 3;
-                                    } else {
-                                        turn = 1;
-                                    }
-                                    lightning = 0;
-                                    turnStunned = 0;
-                                } else if (suceed == 0) {
-                                    turn = 4;
-                                    turnStunned++;
-                                    if (turnStunned == 3) {
-                                        turnStunned = 0;
                                         lightning = 0;
-                                    }
-                                    if (clockwise) {
+                                        turnStunned = 0;
+                                    } else if (suceed == 0) {
                                         drawCards(p3,1);
-                                    } else {
-                                        drawCards(p1,1);
+                                        turn = 4;
+                                        expiredStun(3,lightning,turnStunned);
                                     }
+                                    sleep_for(seconds(3));
                                 } else {
-                                    if (clockwise) {
-                                        turn = 3;
-                                    } else {
-                                        turn = 1;
-                                    }
+                                    turn = 3;
                                 }
                             } else {
-                                if (suceed == 1) {
-                                    turn = 1;
-                                    lightning = 0;
-                                    turnStunned = 0;
-                                } else if (suceed == 0) {
-                                    drawCards(p1,1);
-                                    turnStunned++;
-                                    if (turnStunned == 3) {
-                                        turnStunned = 0;
-                                        lightning = 0;
+                                if (lightning == 1) {
+                                    bool tookC = true;
+                                    coinFlipChallenge(1,suceed,tookC);
+                                    if (tookC == false) {
+                                        expiredStun(1,lightning,turnStunned);
+                                        if (numPlay == 4) {
+                                            turn = 4;
+                                        }
+                                    } else {
+                                        if (suceed == 1) {
+                                            turn = 1;
+                                            lightning = 0;
+                                            turnStunned = 0;
+                                        } else {
+                                            drawCards(p1,1);
+                                            if (numPlay == 4) {
+                                                turn = 4;
+                                            }
+                                            expiredStun(1,lightning,turnStunned);
+                                        }
                                     }
+                                    sleep_for(seconds(3));
+                                } else {
+                                    turn = 1;
                                 }
                             }
                         }
                         p2.placeCard(p2.getDeck().getNumberOfCards()-1);
+                        if (p2.getDeck().getNumberOfCards() == 1) {
+                            std::cout << "CPU 2: UNO!" << std::endl;
+                        }
                     } else {
                         if (clockwise == true and numPlay == 4) {
                             turn = 3;
@@ -3441,37 +3114,27 @@ int main() {
                 sleep_for(seconds(2));
             //CPU 3's turn
             } else if (turn == 3) {
-                if (actioned == true) {
-                    makeWhiteSpace();
-                }
                 if (lightning == 3) {
-                    std::cout << "CPU " << 3  << " awaiting decision: take the coin flip for a chance to be freed? " << std::endl;
-                    sleep_for(seconds(5));
-                    int freed = rand()%2;
-                    if (freed == 1) {
-                        std::cout << "SUCCESS! CPU " << 3 << " have been freed! Cancelling STUN effect..." << std::endl;
+                    bool tookC = true;
+                    coinFlipChallenge(3,suceed,tookC);
+                    if (suceed == 1) {
                         turn = 3;
-                        suceed = 1;
                         lightning = 0;
                         turnStunned = 0;
-                    } else {
-                        std::cout << "FAIL! CPU " << 3  << " failed the coin flip. CPU " << 3 << " will draw 1 penalty card and suffer STUN effect..." << std::endl;
-                        suceed = 0;
+                    } else if (suceed == 0) {
                         drawCards(p3,1);
-                        if (clockwise) {
-                            turn = 4;
-                        } else {
-                            turn = 2;
-                        }
-                        turnStunned++;
-                        if (turnStunned == 3) {
-                            turnStunned = 0;
-                            lightning = 0;
-                        }
+                        turn = 4;
+                        expiredStun(3,lightning,turnStunned);
+                        sleep_for(seconds(3));
                         continue;
                     }
+                    sleep_for(seconds(3));
                 }
-                verifyUNOs(shoutedUno1,shoutedUno2,shoutedUno3,shoutedUno4,c1,c2,c3,c4,p1); 
+                if (p1.getDeck().getNumberOfCards() >= 2) {
+                    shoutedUno1 = false;
+                    c1 = 0;
+                }
+                verifyUNOs(shoutedUno1,p1,c1); 
                 actioned = false;
                 p1 = Player(Deck(sort(p1.getDeck().getCards())),1,pt1,rounds1);
                 p2 = Player(Deck(sort(p2.getDeck().getCards())),2,pt2,rounds2);
@@ -3497,7 +3160,7 @@ int main() {
                         Color startColor = startingCard.getColorCard();
                         startingCard.changeColorCard(chooseColor(p3));
                         std::cout << "Color changed to: " << startingCard.getColorCard().getColor() << std::endl;
-                        if (p3.getDeck().getCardAtPos(p3.getDeck().getNumberOfCards()-1).getFaceCard().getFace().compare("DRAW4WILD") == 0) {
+                        if (p3.getDeck().getCardAtPos(positioned-1).getFaceCard().getFace().compare("DRAW4WILD") == 0) {
                             startingCard.changeFaceCard(Face("DRAW4WILD"));
                             if (clockwise == true) {
                                 if (p3.getDeck().getNumberOfCards() == 1) {
@@ -3508,12 +3171,9 @@ int main() {
                                         displayEffect(p4.getToken(),startingCard,suceed,true,lightning);
                                         if (suceed == 0) {
                                             drawCards(p4,1);
-                                            cpuChallengeDraw4Process(p3,p4,startingCard,turn,numPlay,startColor,suceed);
-                                            turnStunned++;
-                                            if (turnStunned == 3) {
-                                                turnStunned = 0;
-                                                lightning = 0;
-                                            }
+                                            displayEffect(p4.getToken(),startingCard,suceed);
+                                            drawCards(p4,4);
+                                            expiredStun(4,lightning,turnStunned);
                                         } else {
                                             turn = 1;
                                             lightning = 0;
@@ -3531,76 +3191,53 @@ int main() {
                                     if (lightning == 2) {
                                         displayEffect(p2.getToken(),startingCard,suceed,true,lightning);
                                         if (suceed == 0) {
-                                            drawCards(p4,1);
-                                            turnStunned++;
-                                            if (turnStunned == 3) {
-                                                turnStunned = 0;
-                                                lightning = 0;
-                                            }
-                                            cpuChallengeDraw4Process(p3,p2,startingCard,turn,numPlay,startColor,suceed);
+                                            drawCards(p2,1);
+                                            displayEffect(p2.getToken(),startingCard,suceed);
+                                            drawCards(p2,4);
+                                            expiredStun(2,lightning,turnStunned);
                                         } else {
                                             turn = 1;
                                             lightning = 0;
                                             turnStunned = 0;
                                         }
                                     } else {
-                                        cpuChallengeDraw4Process(p3,p4,startingCard,turn,numPlay,startColor,suceed);
+                                        cpuChallengeDraw4Process(p3,p2,startingCard,turn,numPlay,startColor,suceed);
                                     }
                                 }
                             }
-                        } else if (p3.getDeck().getCardAtPos(p3.getDeck().getNumberOfCards()-1).getFaceCard().getFace().compare("WILD") == 0){
+                        } else if (p3.getDeck().getCardAtPos(positioned-1).getFaceCard().getFace().compare("WILD") == 0){
                             startingCard.changeFaceCard(Face("WILD"));
                             if (clockwise == false) {
                                 if (lightning == 2) {
-                                    std::cout << "CPU " << 2  << " awaiting decision: take the coin flip for a chance to be freed? " << std::endl;
-                                    sleep_for(seconds(5));
-                                    std::string coinDecision = "Y";
-                                    int freed = rand()%2;
-                                    if (freed == 1) {
-                                        std::cout << "SUCCESS! CPU " << 2 << " have been freed! Cancelling STUN effect..." << std::endl;
+                                    bool tookC = true;
+                                    coinFlipChallenge(2,suceed,tookC);
+                                    if (suceed == 1) {
                                         turn = 2;
-                                        suceed = 1;
                                         lightning = 0;
                                         turnStunned = 0;
-                                    } else {
-                                        std::cout << "FAIL! CPU " << 2  << " failed the coin flip. CPU " << 2 << " will draw 1 penalty card and suffer STUN effect..." << std::endl;
-                                        std::cout << "CPU " << 2 << ": FORFEITED TURN!" << std::endl;
-                                        suceed = 0;
+                                    } else if (suceed == 0) {
                                         drawCards(p2,1);
                                         turn = 1;
-                                        turnStunned++;
-                                        if (turnStunned == 3) {
-                                            turnStunned = 0;
-                                            lightning = 0;
-                                        }
+                                        expiredStun(2,lightning,turnStunned);
                                     }
+                                    sleep_for(seconds(3));
                                 } else {
                                     turn = 2;
                                 }
                             } else {
                                 if (lightning == 4) {
-                                    std::cout << "CPU " << 4  << " awaiting decision: take the coin flip for a chance to be freed? " << std::endl;
-                                    sleep_for(seconds(5));
-                                    std::string coinDecision = "Y";
-                                    int freed = rand()%2;
-                                    if (freed == 1) {
-                                        std::cout << "SUCCESS! CPU " << 4 << " have been freed! Cancelling STUN effect..." << std::endl;
+                                    bool tookC = true;
+                                    coinFlipChallenge(4,suceed,tookC);
+                                    if (suceed == 1) {
                                         turn = 4;
-                                        suceed = 1;
                                         lightning = 0;
                                         turnStunned = 0;
-                                    } else {
-                                        std::cout << "FAIL! CPU " << 4  << " failed the coin flip. CPU " << 4 << " will draw 1 penalty card and suffer STUN effect..." << std::endl;
-                                        std::cout << "CPU " << 4 << ": FORFEITED TURN!" << std::endl;
-                                        suceed = 0;
+                                    } else if (suceed == 0) {
                                         drawCards(p4,1);
                                         turn = 1;
-                                        turnStunned++;
-                                        if (turnStunned == 3) {
-                                            turnStunned = 0;
-                                            lightning = 0;
-                                        }
+                                        expiredStun(4,lightning,turnStunned);
                                     }
+                                    sleep_for(seconds(3));
                                 } else {
                                     turn = 4;
                                 }
@@ -3625,55 +3262,35 @@ int main() {
                                     std::cout << "LIGHTNING ALREADY ACTIVE! Now treated as standard WILD card. " << std::endl;
                                     if (clockwise == false) {
                                         if (lightning == 2) {
-                                            std::cout << "CPU " << 2  << " awaiting decision: take the coin flip for a chance to be freed? " << std::endl;
-                                            sleep_for(seconds(5));
-                                            std::string coinDecision = "Y";
-                                            int freed = rand()%2;
-                                            if (freed == 1) {
-                                                std::cout << "SUCCESS! CPU " << 2 << " have been freed! Cancelling STUN effect..." << std::endl;
+                                            bool tookC = true;
+                                            coinFlipChallenge(2,suceed,tookC);
+                                            if (suceed == 1) {
                                                 turn = 2;
-                                                suceed = 1;
                                                 lightning = 0;
                                                 turnStunned = 0;
-                                            } else {
-                                                std::cout << "FAIL! CPU " << 2  << " failed the coin flip. CPU " << 2 << " will draw 1 penalty card and suffer STUN effect..." << std::endl;
-                                                std::cout << "CPU " << 2 << ": FORFEITED TURN!" << std::endl;
-                                                suceed = 0;
+                                            } else if (suceed == 0) {
                                                 drawCards(p2,1);
                                                 turn = 1;
-                                                turnStunned++;
-                                                if (turnStunned == 3) {
-                                                    turnStunned = 0;
-                                                    lightning = 0;
-                                                }
+                                                expiredStun(2,lightning,turnStunned);
                                             }
+                                            sleep_for(seconds(3));
                                         } else {
                                             turn = 2;
                                         }
                                     } else {
                                         if (lightning == 4) {
-                                            std::cout << "CPU " << 4  << " awaiting decision: take the coin flip for a chance to be freed? " << std::endl;
-                                            sleep_for(seconds(5));
-                                            std::string coinDecision = "Y";
-                                            int freed = rand()%2;
-                                            if (freed == 1) {
-                                                std::cout << "SUCCESS! CPU " << 4 << " have been freed! Cancelling STUN effect..." << std::endl;
+                                            bool tookC = true;
+                                            coinFlipChallenge(4,suceed,tookC);
+                                            if (suceed == 1) {
                                                 turn = 4;
-                                                suceed = 1;
                                                 lightning = 0;
                                                 turnStunned = 0;
-                                            } else {
-                                                std::cout << "FAIL! CPU " << 4  << " failed the coin flip. CPU " << 4 << " will draw 1 penalty card and suffer STUN effect..." << std::endl;
-                                                std::cout << "CPU " << 4 << ": FORFEITED TURN!" << std::endl;
-                                                suceed = 0;
+                                            } else if (suceed == 0) {
                                                 drawCards(p4,1);
                                                 turn = 1;
-                                                turnStunned++;
-                                                if (turnStunned == 3) {
-                                                    turnStunned = 0;
-                                                    lightning = 0;
-                                                }
+                                                expiredStun(4,lightning,turnStunned);
                                             }
+                                            sleep_for(seconds(3));
                                         } else {
                                             turn = 4;
                                         }
@@ -3686,20 +3303,24 @@ int main() {
                         startingCard.changeColorCard(p3.getDeck().getCardAtPos(positioned-1).getColorCard());
                         startingCard.changeFaceCard(p3.getDeck().getCardAtPos(positioned-1).getFaceCard());
                         if (clockwise == true) {
-                            displayEffect(p4.getToken(),startingCard,suceed,true,lightning);
+                            if (p3.getDeck().getNumberOfCards() == 1) {
+                                displayEffect(p4.getToken(),startingCard,suceed,true,0);
+                            } else {
+                                displayEffect(p4.getToken(),startingCard,suceed,true,lightning);
+                            }
                         } else {
-                            displayEffect(p2.getToken(),startingCard,suceed,true,lightning);
+                            if (p3.getDeck().getNumberOfCards() == 1) {
+                                displayEffect(p2.getToken(),startingCard,suceed,true,0);
+                            } else {
+                                displayEffect(p2.getToken(),startingCard,suceed,true,lightning);
+                            }
                         }
                         if (startingCard.getFaceCard().getFace().compare("DRAW2") == 0) {
                             if (clockwise == true) {
                                 if (suceed == 0) {
                                     drawCards(p4,3);
                                     turn = 1;
-                                    turnStunned++;
-                                    if (turnStunned == 3) {
-                                        turnStunned = 0;
-                                        lightning = 0;
-                                    }
+                                    expiredStun(4,lightning,turnStunned);
                                 } else if (suceed == 1) {
                                     turn = 4;
                                     lightning = 0;
@@ -3712,11 +3333,7 @@ int main() {
                                 if (suceed == 0) {
                                     drawCards(p2,3);
                                     turn = 1;
-                                    turnStunned++;
-                                    if (turnStunned == 3) {
-                                        turnStunned = 0;
-                                        lightning = 0;
-                                    }
+                                    expiredStun(2,lightning,turnStunned);
                                 } else if (suceed == 1) {
                                     turn = 2;
                                     lightning = 0;
@@ -3745,15 +3362,12 @@ int main() {
                                 lightning = 0;
                                 turnStunned = 0;
                             } else if (suceed == 0) {
-                                turnStunned++;
-                                if (turnStunned == 3) {
-                                    turnStunned = 0;
-                                    lightning = 0;
-                                }
                                 if (clockwise) {
                                     drawCards(p4,1);
+                                    expiredStun(4,lightning,turnStunned);
                                 } else {
                                     drawCards(p2,1);
+                                    expiredStun(2,lightning,turnStunned);
                                 }
                                 turn = 1;
                             } else {
@@ -3766,61 +3380,44 @@ int main() {
                         startingCard.changeFaceCard(p3.getDeck().getCardAtPos(positioned-1).getFaceCard());
                         if (clockwise == false) {
                             if (lightning == 2) {
-                                std::cout << "CPU " << 2  << " awaiting decision: take the coin flip for a chance to be freed? " << std::endl;
-                                sleep_for(seconds(5));
-                                int freed = rand()%2;
-                                if (freed == 1) {
-                                    std::cout << "SUCCESS! CPU " << 2 << " have been freed! Cancelling STUN effect..." << std::endl;
+                                bool tookC = true;
+                                coinFlipChallenge(2,suceed,tookC);
+                                if (suceed == 1) {
                                     turn = 2;
-                                    suceed = 1;
                                     lightning = 0;
                                     turnStunned = 0;
-                                } else {
-                                    std::cout << "FAIL! CPU " << 2  << " failed the coin flip. CPU " << 2 << " will draw 1 penalty card and suffer STUN effect..." << std::endl;
-                                    std::cout << "CPU " << 2 << ": FORFEITED TURN!" << std::endl;
-                                    suceed = 0;
+                                } else if (suceed == 0) {
                                     drawCards(p2,1);
-                                    if (numPlay == 4) {
-                                        turn = 3;
-                                    }
-                                    turnStunned++;
-                                    if (turnStunned == 3) {
-                                        turnStunned = 0;
-                                        lightning = 0;
-                                    }
+                                    turn = 1;
+                                    expiredStun(2,lightning,turnStunned);
                                 }
+                                sleep_for(seconds(3));
                             } else {
                                 turn = 2;
                             }
                         } else {
                             if (lightning == 4) {
-                                std::cout << "CPU " << 4  << " awaiting decision: take the coin flip for a chance to be freed? " << std::endl;
-                                sleep_for(seconds(5));
-                                int freed = rand()%2;
-                                if (freed == 1) {
-                                    std::cout << "SUCCESS! CPU " << 4 << " have been freed! Cancelling STUN effect..." << std::endl;
+                                bool tookC = true;
+                                coinFlipChallenge(4,suceed,tookC);
+                                if (suceed == 1) {
                                     turn = 4;
-                                    suceed = 1;
                                     lightning = 0;
                                     turnStunned = 0;
-                                } else {
-                                    std::cout << "FAIL! CPU " << 4  << " failed the coin flip. CPU " << 4 << " will draw 1 penalty card and suffer STUN effect..." << std::endl;
-                                    std::cout << "CPU " << 4 << ": FORFEITED TURN!" << std::endl;
-                                    suceed = 0;
+                                } else if (suceed == 0) {
                                     drawCards(p4,1);
-                                    turn = 3;
-                                    turnStunned++;
-                                    if (turnStunned == 3) {
-                                        turnStunned = 0;
-                                        lightning = 0;
-                                    }
+                                    turn = 1;
+                                    expiredStun(4,lightning,turnStunned);
                                 }
+                                sleep_for(seconds(3));
                             } else {
                                 turn = 4;
                             }  
                         }
                     }
                     p3.placeCard(positioned-1);
+                    if (p3.getDeck().getNumberOfCards() == 1) {
+                        std::cout << "CPU 3: UNO!" << std::endl;
+                    }
                 //No playable card
                 } else {
                     p3.drawCard();
@@ -3849,12 +3446,9 @@ int main() {
                                             displayEffect(p4.getToken(),startingCard,suceed,true,lightning);
                                             if (suceed == 0) {
                                                 drawCards(p4,1);
-                                                cpuChallengeDraw4Process(p3,p4,startingCard,turn,numPlay,startColor,suceed);
-                                                turnStunned++;
-                                                if (turnStunned == 3) {
-                                                    turnStunned = 0;
-                                                    lightning = 0;
-                                                }
+                                                displayEffect(p4.getToken(),startingCard,suceed);
+                                                drawCards(p4,4);
+                                                expiredStun(3,lightning,turnStunned);
                                             } else {
                                                 turn = 1;
                                                 lightning = 0;
@@ -3872,75 +3466,53 @@ int main() {
                                         if (lightning == 2) {
                                             displayEffect(p2.getToken(),startingCard,suceed,true,lightning);
                                             if (suceed == 0) {
-                                                drawCards(p4,1);
-                                                cpuChallengeDraw4Process(p3,p2,startingCard,turn,numPlay,startColor,suceed);
-                                                turnStunned++;
-                                                if (turnStunned == 3) {
-                                                    turnStunned = 0;
-                                                    lightning = 0;
-                                                }
+                                                drawCards(p2,1);
+                                                displayEffect(p2.getToken(),startingCard,suceed);
+                                                drawCards(p2,4);
+                                                expiredStun(2,lightning,turnStunned);
                                             } else {
                                                 turn = 1;
                                                 lightning = 0;
                                                 turnStunned = 0;
                                             }
                                         } else {
-                                            cpuChallengeDraw4Process(p3,p4,startingCard,turn,numPlay,startColor,suceed);
+                                            cpuChallengeDraw4Process(p3,p2,startingCard,turn,numPlay,startColor,suceed);
                                         }
                                     }
                                 }
-                            } else if (p3.getDeck().getCardAtPos(p2.getDeck().getNumberOfCards()-1).getFaceCard().getFace().compare("WILD") == 0){
+                            } else if (p3.getDeck().getCardAtPos(p3.getDeck().getNumberOfCards()-1).getFaceCard().getFace().compare("WILD") == 0){
                                 startingCard.changeFaceCard(Face("WILD"));
                                 if (clockwise == false) {
                                     if (lightning == 2) {
-                                        std::cout << "CPU " << 2  << " awaiting decision: take the coin flip for a chance to be freed? " << std::endl;
-                                        sleep_for(seconds(5));
-                                        std::string coinDecision = "Y";
-                                        int freed = rand()%2;
-                                        if (freed == 1) {
-                                            std::cout << "SUCCESS! CPU " << 2 << " have been freed! Cancelling STUN effect..." << std::endl;
+                                        bool tookC = true;
+                                        coinFlipChallenge(2,suceed,tookC);
+                                        if (suceed == 1) {
                                             turn = 2;
-                                            suceed = 1;
                                             lightning = 0;
                                             turnStunned = 0;
-                                        } else {
-                                            std::cout << "FAIL! CPU " << 2  << " failed the coin flip. CPU " << 2 << " will draw 1 penalty card and suffer STUN effect..." << std::endl;
-                                            suceed = 0;
+                                        } else if (suceed == 0) {
                                             drawCards(p2,1);
                                             turn = 1;
-                                            turnStunned++;
-                                            if (turnStunned == 3) {
-                                                turnStunned = 0;
-                                                lightning = 0;
-                                            }
+                                            expiredStun(2,lightning,turnStunned);
                                         }
+                                        sleep_for(seconds(3));
                                     } else {
                                         turn = 2;
                                     }
                                 } else {
                                     if (lightning == 4) {
-                                        std::cout << "CPU " << 4  << " awaiting decision: take the coin flip for a chance to be freed? " << std::endl;
-                                        sleep_for(seconds(5));
-                                        std::string coinDecision = "Y";
-                                        int freed = rand()%2;
-                                        if (freed == 1) {
-                                            std::cout << "SUCCESS! CPU " << 4 << " have been freed! Cancelling STUN effect..." << std::endl;
+                                        bool tookC = true;
+                                        coinFlipChallenge(4,suceed,tookC);
+                                        if (suceed == 1) {
                                             turn = 4;
-                                            suceed = 1;
                                             lightning = 0;
                                             turnStunned = 0;
-                                        } else {
-                                            std::cout << "FAIL! CPU " << 4  << " failed the coin flip. CPU " << 4 << " will draw 1 penalty card and suffer STUN effect..." << std::endl;
-                                            std::cout << "CPU " << 4 << ": FORFEITED TURN!" << std::endl;
-                                            suceed = 0;
+                                        } else if (suceed == 0) {
                                             drawCards(p4,1);
                                             turn = 1;
-                                            turnStunned++;
-                                            if (turnStunned == 3) {
-                                                turnStunned = 0;
-                                                lightning = 0;
-                                            }
+                                            expiredStun(4,lightning,turnStunned);
                                         }
+                                        sleep_for(seconds(3));
                                     } else {
                                         turn = 4;
                                     }
@@ -3965,55 +3537,35 @@ int main() {
                                         std::cout << "LIGHTNING ALREADY ACTIVE! Now treated as standard WILD card. " << std::endl;
                                         if (clockwise == false) {
                                             if (lightning == 2) {
-                                                std::cout << "CPU " << 2  << " awaiting decision: take the coin flip for a chance to be freed? " << std::endl;
-                                                sleep_for(seconds(5));
-                                                std::string coinDecision = "Y";
-                                                int freed = rand()%2;
-                                                if (freed == 1) {
-                                                    std::cout << "SUCCESS! CPU " << 2 << " have been freed! Cancelling STUN effect..." << std::endl;
+                                                bool tookC = true;
+                                                coinFlipChallenge(2,suceed,tookC);
+                                                if (suceed == 1) {
                                                     turn = 2;
-                                                    suceed = 1;
                                                     lightning = 0;
                                                     turnStunned = 0;
-                                                } else {
-                                                    std::cout << "FAIL! CPU " << 2  << " failed the coin flip. CPU " << 2 << " will draw 1 penalty card and suffer STUN effect..." << std::endl;
-                                                    std::cout << "CPU " << 2 << ": FORFEITED TURN!" << std::endl;
-                                                    suceed = 0;
+                                                } else if (suceed == 0) {
                                                     drawCards(p2,1);
                                                     turn = 1;
-                                                    turnStunned++;
-                                                    if (turnStunned == 3) {
-                                                        turnStunned = 0;
-                                                        lightning = 0;
-                                                    }
+                                                    expiredStun(2,lightning,turnStunned);
                                                 }
+                                                sleep_for(seconds(3));
                                             } else {
                                                 turn = 2;
                                             }
                                         } else {
                                             if (lightning == 4) {
-                                                std::cout << "CPU " << 4  << " awaiting decision: take the coin flip for a chance to be freed? " << std::endl;
-                                                sleep_for(seconds(5));
-                                                std::string coinDecision = "Y";
-                                                int freed = rand()%2;
-                                                if (freed == 1) {
-                                                    std::cout << "SUCCESS! CPU " << 4 << " have been freed! Cancelling STUN effect..." << std::endl;
+                                                bool tookC = true;
+                                                coinFlipChallenge(4,suceed,tookC);
+                                                if (suceed == 1) {
                                                     turn = 4;
-                                                    suceed = 1;
                                                     lightning = 0;
                                                     turnStunned = 0;
-                                                } else {
-                                                    std::cout << "FAIL! CPU " << 4  << " failed the coin flip. CPU " << 4 << " will draw 1 penalty card and suffer STUN effect..." << std::endl;
-                                                    std::cout << "CPU " << 4 << ": FORFEITED TURN!" << std::endl;
-                                                    suceed = 0;
+                                                } else if (suceed == 0) {
                                                     drawCards(p4,1);
                                                     turn = 1;
-                                                    turnStunned++;
-                                                    if (turnStunned == 3) {
-                                                        turnStunned = 0;
-                                                        lightning = 0;
-                                                    }
+                                                    expiredStun(4,lightning,turnStunned);
                                                 }
+                                                sleep_for(seconds(3));
                                             } else {
                                                 turn = 4;
                                             }
@@ -4026,20 +3578,24 @@ int main() {
                             startingCard.changeColorCard(p3.getDeck().getCardAtPos(p3.getDeck().getNumberOfCards()-1).getColorCard());
                             startingCard.changeFaceCard(p3.getDeck().getCardAtPos(p3.getDeck().getNumberOfCards()-1).getFaceCard());
                             if (clockwise == true) {
-                                displayEffect(p4.getToken(),startingCard,suceed,true,lightning);
+                                if (p3.getDeck().getNumberOfCards() == 1) {
+                                    displayEffect(p4.getToken(),startingCard,suceed,true,0);
+                                } else {
+                                    displayEffect(p4.getToken(),startingCard,suceed,true,lightning);
+                                }
                             } else {
-                                displayEffect(p2.getToken(),startingCard,suceed,true,lightning);
+                                if (p3.getDeck().getNumberOfCards() == 1) {
+                                    displayEffect(p2.getToken(),startingCard,suceed,true,0);
+                                } else {
+                                    displayEffect(p2.getToken(),startingCard,suceed,true,lightning);
+                                }
                             }
                             if (startingCard.getFaceCard().getFace().compare("DRAW2") == 0) {
                                 if (clockwise == true) {
                                     if (suceed == 0) {
                                         drawCards(p4,3);
                                         turn = 1;
-                                        turnStunned++;
-                                        if (turnStunned == 3) {
-                                            turnStunned = 0;
-                                            lightning = 0;
-                                        }
+                                        expiredStun(4,lightning,turnStunned);
                                     } else if (suceed == 1) {
                                         turn = 4;
                                         lightning = 0;
@@ -4052,11 +3608,7 @@ int main() {
                                     if (suceed == 0) {
                                         drawCards(p2,3);
                                         turn = 1;
-                                        turnStunned++;
-                                        if (turnStunned == 3) {
-                                            turnStunned = 0;
-                                            lightning = 0;
-                                        }
+                                        expiredStun(2,lightning,turnStunned);
                                     } else if (suceed == 1) {
                                         turn = 2;
                                         lightning = 0;
@@ -4083,15 +3635,12 @@ int main() {
                                     lightning = 0;
                                     turnStunned = 0;
                                 } else if (suceed == 0) {
-                                    turnStunned++;
-                                    if (turnStunned == 3) {
-                                        turnStunned = 0;
-                                        lightning = 0;
-                                    }
                                     if (clockwise) {
                                         drawCards(p4,1);
+                                        expiredStun(4,lightning,turnStunned);
                                     } else {
                                         drawCards(p2,1);
+                                        expiredStun(2,lightning,turnStunned);
                                     }
                                     turn = 1;
                                 } else {
@@ -4104,113 +3653,76 @@ int main() {
                             startingCard.changeFaceCard(p3.getDeck().getCardAtPos(p3.getDeck().getNumberOfCards()-1).getFaceCard());
                             if (clockwise == false) {
                                 if (lightning == 2) {
-                                    std::cout << "CPU " << 2  << " awaiting decision: take the coin flip for a chance to be freed? " << std::endl;
-                                    sleep_for(seconds(5));
-                                    int freed = rand()%2;
-                                    if (freed == 1) {
-                                        std::cout << "SUCCESS! CPU " << 2 << " have been freed! Cancelling STUN effect..." << std::endl;
+                                    bool tookC = true;
+                                    coinFlipChallenge(2,suceed,tookC);
+                                    if (suceed == 1) {
                                         turn = 2;
-                                        suceed = 1;
                                         lightning = 0;
                                         turnStunned = 0;
-                                    } else {
-                                        std::cout << "FAIL! CPU " << 2  << " failed the coin flip. CPU " << 2 << " will draw 1 penalty card and suffer STUN effect..." << std::endl;
-                                        std::cout << "CPU " << 2 << ": FORFEITED TURN!" << std::endl;
-                                        suceed = 0;
+                                    } else if (suceed == 0) {
                                         drawCards(p2,1);
-                                        if (numPlay == 4) {
-                                            turn = 3;
-                                        }
-                                        turnStunned++;
-                                        if (turnStunned == 3) {
-                                            turnStunned = 0;
-                                            lightning = 0;
-                                        }
+                                        turn = 1;
+                                        expiredStun(2,lightning,turnStunned);
                                     }
+                                    sleep_for(seconds(3));
                                 } else {
                                     turn = 2;
                                 }
                             } else {
                                 if (lightning == 4) {
-                                    std::cout << "CPU " << 4  << " awaiting decision: take the coin flip for a chance to be freed? " << std::endl;
-                                    sleep_for(seconds(5));
-                                    int freed = rand()%2;
-                                    if (freed == 1) {
-                                        std::cout << "SUCCESS! CPU " << 4 << " have been freed! Cancelling STUN effect..." << std::endl;
+                                    bool tookC = true;
+                                    coinFlipChallenge(4,suceed,tookC);
+                                    if (suceed == 1) {
                                         turn = 4;
-                                        suceed = 1;
                                         lightning = 0;
                                         turnStunned = 0;
-                                    } else {
-                                        std::cout << "FAIL! CPU " << 4  << " failed the coin flip. CPU " << 4 << " will draw 1 penalty card and suffer STUN effect..." << std::endl;
-                                        std::cout << "CPU " << 4 << ": FORFEITED TURN!" << std::endl;
-                                        suceed = 0;
+                                    } else if (suceed == 0) {
                                         drawCards(p4,1);
-                                        turn = 3;
-                                        turnStunned++;
-                                        if (turnStunned == 3) {
-                                            turnStunned = 0;
-                                            lightning = 0;
-                                        }
+                                        turn = 1;
+                                        expiredStun(4,lightning,turnStunned);
                                     }
+                                    sleep_for(seconds(3));
                                 } else {
                                     turn = 4;
                                 }  
                             }
                         }
                         p3.placeCard(p3.getDeck().getNumberOfCards()-1);
+                        if (p3.getDeck().getNumberOfCards() == 1) {
+                            std::cout << "CPU 3: UNO!" << std::endl;
+                        }
                     } else {
                         if (clockwise == false) {
                             if (lightning == 2) {
-                                std::cout << "CPU " << 2  << " awaiting decision: take the coin flip for a chance to be freed? " << std::endl;
-                                sleep_for(seconds(5));
-                                int freed = rand()%2;
-                                if (freed == 1) {
-                                    std::cout << "SUCCESS! CPU " << 2 << " have been freed! Cancelling STUN effect..." << std::endl;
+                                bool tookC = true;
+                                coinFlipChallenge(2,suceed,tookC);
+                                if (suceed == 1) {
                                     turn = 2;
-                                    suceed = 1;
                                     lightning = 0;
                                     turnStunned = 0;
-                                } else {
-                                    std::cout << "FAIL! CPU " << 2  << " failed the coin flip. CPU " << 2 << " will draw 1 penalty card and suffer STUN effect..." << std::endl;
-                                    std::cout << "CPU " << 2 << ": FORFEITED TURN!" << std::endl;
-                                    suceed = 0;
+                                } else if (suceed == 0) {
                                     drawCards(p2,1);
-                                    if (numPlay == 4) {
-                                        turn = 3;
-                                    }
-                                    turnStunned++;
-                                    if (turnStunned == 3) {
-                                        turnStunned = 0;
-                                        lightning = 0;
-                                    }
+                                    turn = 1;
+                                    expiredStun(2,lightning,turnStunned);
                                 }
+                                sleep_for(seconds(3));
                             } else {
                                 turn = 2;
                             }
                         } else {
                             if (lightning == 4) {
-                                std::cout << "CPU " << 4  << " awaiting decision: take the coin flip for a chance to be freed? " << std::endl;
-                                sleep_for(seconds(5));
-                                int freed = rand()%2;
-                                if (freed == 1) {
-                                    std::cout << "SUCCESS! CPU " << 4 << " have been freed! Cancelling STUN effect..." << std::endl;
+                                bool tookC = true;
+                                coinFlipChallenge(4,suceed,tookC);
+                                if (suceed == 1) {
                                     turn = 4;
-                                    suceed = 1;
                                     lightning = 0;
                                     turnStunned = 0;
-                                } else {
-                                    std::cout << "FAIL! CPU " << 4  << " failed the coin flip. CPU " << 4 << " will draw 1 penalty card and suffer STUN effect..." << std::endl;
-                                    std::cout << "CPU " << 4 << ": FORFEITED TURN!" << std::endl;
-                                    suceed = 0;
+                                } else if (suceed == 0) {
                                     drawCards(p4,1);
-                                    turn = 3;
-                                    turnStunned++;
-                                    if (turnStunned == 3) {
-                                        turnStunned = 0;
-                                        lightning = 0;
-                                    }
+                                    turn = 1;
+                                    expiredStun(4,lightning,turnStunned);
                                 }
+                                sleep_for(seconds(3));
                             } else {
                                 turn = 4;
                             }  
@@ -4229,31 +3741,28 @@ int main() {
                 sleep_for(seconds(2));
             //CPU 4 turn
             } else {
-                verifyUNOs(shoutedUno1,shoutedUno2,shoutedUno3,shoutedUno4,c1,c2,c3,c4,p1); 
+                verifyUNOs(shoutedUno1,p1,c1); 
+                if (p1.getDeck().getNumberOfCards() >= 2) {
+                    shoutedUno1 = false;
+                    c1 = 0;
+                }
                 if (lightning == 4) {
-                    std::cout << "CPU " << 4  << " awaiting decision: take the coin flip for a chance to be freed? " << std::endl;
-                    sleep_for(seconds(5));
-                    int freed = rand()%2;
-                    if (freed == 1) {
-                        std::cout << "SUCCESS! CPU " << 4 << " have been freed! Cancelling STUN effect..." << std::endl;
+                    bool tookC = true;
+                    coinFlipChallenge(4,suceed,tookC);
+                    if (suceed == 1) {
                         turn = 4;
-                        suceed = 1;
                         lightning = 0;
                         turnStunned = 0;
-                    } else {
-                        std::cout << "FAIL! CPU " << 4  << " failed the coin flip. CPU " << 4 << " will draw 1 penalty card and suffer STUN effect..." << std::endl;
-                        suceed = 0;
+                        sleep_for(seconds(3));
+                    } else if (suceed == 0) {
                         drawCards(p4,1);
                         if (clockwise) {
                             turn = 1;
                         } else {
                             turn = 3;
                         }
-                        turnStunned++;
-                        if (turnStunned == 3) {
-                            turnStunned = 0;
-                            lightning = 0;
-                        }
+                        expiredStun(4,lightning,turnStunned);
+                        sleep_for(seconds(3));
                         continue;
                     }
                 }
@@ -4289,14 +3798,12 @@ int main() {
                                     displayEffect(p1.getToken(),startingCard,suceed);
                                 } else {
                                     if (lightning == 1) {
+                                        displayEffect(p1.getToken(),startingCard,suceed,true,lightning);
                                         if (suceed == 0) {
                                             drawCards(p1,1);
-                                            playerChallengeDraw4Process(p4,p1,startingCard,turn,numPlay,startColor,suceed);
-                                            turnStunned++;
-                                            if (turnStunned == 3) {
-                                                turnStunned = 0;
-                                                lightning = 0;
-                                            }
+                                            displayEffect(p1.getToken(),startingCard,suceed);
+                                            drawCards(p1,4);
+                                            expiredStun(1,lightning,turnStunned);
                                         } else {
                                             turn = 1;
                                             lightning = 0;
@@ -4312,14 +3819,12 @@ int main() {
                                     displayEffect(p3.getToken(),startingCard,suceed);
                                 } else {
                                     if (lightning == 3) {
+                                        displayEffect(p3.getToken(),startingCard,suceed,true,lightning);
                                         if (suceed == 0) {
                                             drawCards(p3,1);
-                                            cpuChallengeDraw4Process(p4,p3,startingCard,turn,numPlay,startColor,suceed);
-                                            turnStunned++;
-                                            if (turnStunned == 3) {
-                                                turnStunned = 0;
-                                                lightning = 0;
-                                            }
+                                            displayEffect(p3.getToken(),startingCard,suceed);
+                                            drawCards(p3,4);
+                                            expiredStun(3,lightning,turnStunned);
                                         } else {
                                             turn = 3;
                                             lightning = 0;
@@ -4330,61 +3835,46 @@ int main() {
                                     }
                                 }
                             }
-                        } else if (p4.getDeck().getCardAtPos(p4.getDeck().getNumberOfCards()-1).getFaceCard().getFace().compare("WILD") == 0 or p4.getDeck().getCardAtPos(positioned-1).getFaceCard().getFace().compare("LIGHTNING") == 0){
+                        } else if (p4.getDeck().getCardAtPos(positioned-1).getFaceCard().getFace().compare("WILD") == 0){
                             startingCard.changeFaceCard(Face("WILD"));
                             if (clockwise == true) {
                                 if (lightning == 1) {
-                                    std::string coinDecision = "";
-                                    std::cout << "Player 1, do you wish to take a coin flip for a chance to be freed? (+0/1 Y, +0 N) (Y/N): ";
-                                    std::cin >> coinDecision;
-                                    if (coinDecision == "Y") {
-                                        std::cout << "Your fate is in God's hands now..." << std::endl;
-                                        sleep_for(seconds(5));
-                                        int freed = rand()%2;
-                                        if (freed == 1) {
-                                            std::cout << "SUCCESS! Player 1 have been freed! Cancelling STUN effect..." << std::endl;
-                                            suceed = 1;
+                                    bool tookC = true;
+                                    coinFlipChallenge(1,suceed,tookC);
+                                    if (tookC == false) {
+                                        expiredStun(1,lightning,turnStunned);
+                                        if (numPlay == 4) {
+                                            turn = 4;
+                                        }
+                                    } else {
+                                        if (suceed == 1) {
                                             turn = 1;
                                             lightning = 0;
                                             turnStunned = 0;
                                         } else {
-                                            std::cout << "FAIL! Player 1 failed the coin flip. Player 1 will draw 1 penalty card and suffer STUN effect..." << std::endl;
-                                            suceed = 0;
                                             drawCards(p1,1);
                                             turn = 2;
-                                            turnStunned++;
-                                            if (turnStunned == 3) {
-                                                turnStunned = 0;
-                                                lightning = 0;
-                                            }
+                                            expiredStun(1,lightning,turnStunned);
                                         }
-                                    } else {
-                                        std::cout << "Player 1 didn't take the coin flip. Player 1 will suffer STUN effect..." << std::endl;
                                     }
+                                    sleep_for(seconds(3));
                                 } else {
                                     turn = 1;
                                 }
                             } else {
                                 if (lightning == 3) {
-                                    std::cout << "CPU " << 3  << " awaiting decision: take the coin flip for a chance to be freed? " << std::endl;
-                                    sleep_for(seconds(5));
-                                    int freed = rand()%2;
-                                    if (freed == 1) {
-                                        std::cout << "SUCCESS! CPU " << 3 << " have been freed! Cancelling STUN effect..." << std::endl;
+                                    bool tookC = true;
+                                    coinFlipChallenge(3,suceed,tookC);
+                                    if (suceed == 1) {
                                         turn = 3;
-                                        suceed = 1;
                                         lightning = 0;
-                                    } else {
-                                        std::cout << "FAIL! CPU " << 3  << " failed the coin flip. CPU " << 3 << " will draw 1 penalty card and suffer STUN effect..." << std::endl;
-                                        suceed = 0;
-                                        drawCards(p3,1);
-                                        turn = 2;
-                                        turnStunned++;
-                                        if (turnStunned == 3) {
-                                            turnStunned = 0;
-                                            lightning = 0;
-                                        }
+                                        turnStunned = 0;
+                                    } else if (suceed == 0) {
+                                        drawCards(p4,1);
+                                        turn = 3;
+                                        expiredStun(4,lightning,turnStunned);
                                     }
+                                    sleep_for(seconds(3));
                                 } else {
                                     turn = 3;
                                 }
@@ -4409,57 +3899,42 @@ int main() {
                                     std::cout << "LIGHTNING ALREADY ACTIVE! Now treated as standard WILD card. " << std::endl;
                                     if (clockwise == true) {
                                         if (lightning == 1) {
-                                            std::string coinDecision = "";
-                                            std::cout << "Player 1, do you wish to take a coin flip for a chance to be freed? (+0/1 Y, +0 N) (Y/N): ";
-                                            std::cin >> coinDecision;
-                                            if (coinDecision == "Y") {
-                                                std::cout << "Your fate is in God's hands now..." << std::endl;
-                                                sleep_for(seconds(5));
-                                                int freed = rand()%2;
-                                                if (freed == 1) {
-                                                    std::cout << "SUCCESS! Player 1 have been freed! Cancelling STUN effect..." << std::endl;
-                                                    suceed = 1;
+                                            bool tookC = true;
+                                            coinFlipChallenge(1,suceed,tookC);
+                                            if (tookC == false) {
+                                                expiredStun(1,lightning,turnStunned);
+                                                if (numPlay == 4) {
+                                                    turn = 4;
+                                                }
+                                            } else {
+                                                if (suceed == 1) {
                                                     turn = 1;
                                                     lightning = 0;
                                                     turnStunned = 0;
                                                 } else {
-                                                    std::cout << "FAIL! Player 1 failed the coin flip. Player 1 will draw 1 penalty card and suffer STUN effect..." << std::endl;
-                                                    suceed = 0;
                                                     drawCards(p1,1);
                                                     turn = 2;
-                                                    turnStunned++;
-                                                    if (turnStunned == 3) {
-                                                        turnStunned = 0;
-                                                        lightning = 0;
-                                                    }
+                                                    expiredStun(1,lightning,turnStunned);
                                                 }
-                                            } else {
-                                                std::cout << "Player 1 didn't take the coin flip. Player 1 will suffer STUN effect..." << std::endl;
                                             }
+                                            sleep_for(seconds(3));
                                         } else {
                                             turn = 1;
                                         }
                                     } else {
                                         if (lightning == 3) {
-                                            std::cout << "CPU " << 3  << " awaiting decision: take the coin flip for a chance to be freed? " << std::endl;
-                                            sleep_for(seconds(5));
-                                            int freed = rand()%2;
-                                            if (freed == 1) {
-                                                std::cout << "SUCCESS! CPU " << 3 << " have been freed! Cancelling STUN effect..." << std::endl;
+                                            bool tookC = true;
+                                            coinFlipChallenge(3,suceed,tookC);
+                                            if (suceed == 1) {
                                                 turn = 3;
-                                                suceed = 1;
                                                 lightning = 0;
-                                            } else {
-                                                std::cout << "FAIL! CPU " << 3  << " failed the coin flip. CPU " << 3 << " will draw 1 penalty card and suffer STUN effect..." << std::endl;
-                                                suceed = 0;
-                                                drawCards(p3,1);
-                                                turn = 2;
-                                                turnStunned++;
-                                                if (turnStunned == 3) {
-                                                    turnStunned = 0;
-                                                    lightning = 0;
-                                                }
+                                                turnStunned = 0;
+                                            } else if (suceed == 0) {
+                                                drawCards(p4,1);
+                                                turn = 3;
+                                                expiredStun(4,lightning,turnStunned);
                                             }
+                                            sleep_for(seconds(3));
                                         } else {
                                             turn = 3;
                                         }
@@ -4472,20 +3947,24 @@ int main() {
                         startingCard.changeColorCard(p4.getDeck().getCardAtPos(positioned-1).getColorCard());
                         startingCard.changeFaceCard(p4.getDeck().getCardAtPos(positioned-1).getFaceCard());
                         if (clockwise == true) {
-                            displayEffect(p1.getToken(),startingCard,suceed,true,lightning);
+                            if (p4.getDeck().getNumberOfCards() == 1) {
+                                displayEffect(p1.getToken(),startingCard,suceed,true,0);
+                            } else {
+                                displayEffect(p1.getToken(),startingCard,suceed,true,lightning);
+                            }
                         } else {
-                            displayEffect(p3.getToken(),startingCard,suceed,true,lightning);
+                            if (p4.getDeck().getNumberOfCards() == 1) {
+                                displayEffect(p3.getToken(),startingCard,suceed,true,0);
+                            } else {
+                                displayEffect(p3.getToken(),startingCard,suceed,true,lightning);
+                            }
                         }
                         if (startingCard.getFaceCard().getFace().compare("DRAW2") == 0) {
                             if (clockwise == true) {
                                 if (suceed == 0) {
                                     drawCards(p1,3);
                                     turn = 2;
-                                    turnStunned++;
-                                    if (turnStunned == 3) {
-                                        turnStunned = 0;
-                                        lightning = 0;
-                                    }
+                                    expiredStun(1,lightning,turnStunned);
                                 } else if (suceed == 1) {
                                     turn = 1;
                                     lightning = 0;
@@ -4497,11 +3976,7 @@ int main() {
                                 if (suceed == 0) {
                                     drawCards(p3,3);
                                     turn = 2;
-                                    turnStunned++;
-                                    if (turnStunned == 3) {
-                                        turnStunned = 0;
-                                        lightning = 0;
-                                    }
+                                    expiredStun(3,lightning,turnStunned);
                                 } else if (suceed == 1) {
                                     turn = 3;
                                     lightning = 0;
@@ -4521,11 +3996,6 @@ int main() {
                         } else if (startingCard.getFaceCard().getFace().compare("SKIP") == 0) {
                             if (suceed == 1) {
                                 lightning = 0;
-                                turnStunned++;
-                                if (turnStunned == 3) {
-                                    turnStunned = 0;
-                                    lightning = 0;
-                                }
                                 if (clockwise) {
                                     turn = 1;
                                 } else {
@@ -4534,8 +4004,10 @@ int main() {
                             } else if (suceed == 0) {
                                 if (clockwise) {
                                     drawCards(p1,1);
+                                    expiredStun(1,lightning,turnStunned);
                                 } else {
                                     drawCards(p3,1);
+                                    expiredStun(3,lightning,turnStunned);
                                 }
                                 turn = 2;
                             } else {
@@ -4548,67 +4020,51 @@ int main() {
                         startingCard.changeFaceCard(p4.getDeck().getCardAtPos(positioned-1).getFaceCard());
                         if (clockwise == false) {
                             if (lightning == 3) {
-                                std::cout << "CPU " << 3  << " awaiting decision: take the coin flip for a chance to be freed? " << std::endl;
-                                sleep_for(seconds(5));
-                                int freed = rand()%2;
-                                if (freed == 1) {
-                                    std::cout << "SUCCESS! CPU " << 3 << " have been freed! Cancelling STUN effect..." << std::endl;
+                                bool tookC = true;
+                                coinFlipChallenge(3,suceed,tookC);
+                                if (suceed == 1) {
                                     turn = 3;
-                                    suceed = 1;
                                     lightning = 0;
                                     turnStunned = 0;
-                                } else {
-                                    std::cout << "FAIL! CPU " << 3  << " failed the coin flip. CPU " << 3 << " will draw 1 penalty card and suffer STUN effect..." << std::endl;
-                                    std::cout << "CPU " << 3 << ": FORFEITED TURN!" << std::endl;
-                                    suceed = 0;
-                                    drawCards(p3,1);
-                                    if (numPlay == 4) {
-                                        turn = 2;
-                                    }
-                                    turnStunned++;
-                                    if (turnStunned == 3) {
-                                        turnStunned = 0;
-                                        lightning = 0;
-                                    }
+                                } else if (suceed == 0) {
+                                    drawCards(p4,1);
+                                    turn = 3;
+                                    expiredStun(4,lightning,turnStunned);
                                 }
+                                sleep_for(seconds(3));
                             } else {
                                 turn = 3;
                             }
                         } else {
                             if (lightning == 1) {
-                                std::string dec = "";
-                                std::cout << "Player 1, do you wish to take a coin flip for a chance to be freed? (+0/1 Y, +0 N) (Y/N): ";
-                                std::cin >> dec;
-                                if (dec == "Y") {
-                                    std::cout << "Your fate is in God's hands now..." << std::endl;
-                                    sleep_for(seconds(5));
-                                    int freed = rand()%2;
-                                    if (freed == 1) {
-                                        std::cout << "SUCCESS! Player " << 1 << " have been freed! Cancelling STUN effect..." << std::endl;
+                                bool tookC = true;
+                                coinFlipChallenge(1,suceed,tookC);
+                                if (tookC == false) {
+                                    expiredStun(1,lightning,turnStunned);
+                                    if (numPlay == 4) {
+                                        turn = 4;
+                                    }
+                                } else {
+                                    if (suceed == 1) {
                                         turn = 1;
-                                        suceed = 1;
                                         lightning = 0;
                                         turnStunned = 0;
                                     } else {
-                                        std::cout << "FAIL! Player 1 failed the coin flip. Player 1 will draw 1 penalty card and suffer STUN effect..." << std::endl;
-                                        suceed = 0;
                                         drawCards(p1,1);
                                         turn = 2;
-                                        turnStunned++;
-                                        if (turnStunned == 3) {
-                                            turnStunned = 0;
-                                            lightning = 0;
-                                        }
+                                        expiredStun(1,lightning,turnStunned);
                                     }
-                                } else {
-                                    std::cout << "Player 1 didn't take the coin flip. Player 1 will suffer STUN effect..." << std::endl;
                                 }
+                                sleep_for(seconds(3));
                             } else {
                                 turn = 1;
                             }  
                         }
                     }
                     p4.placeCard(positioned-1);
+                    if (p4.getDeck().getNumberOfCards() == 1) {
+                        std::cout << "CPU 4: UNO!" << std::endl;
+                    }
                 //draw a card
                 } else {
                     p4.drawCard();
@@ -4634,14 +4090,12 @@ int main() {
                                         displayEffect(p1.getToken(),startingCard,suceed);
                                     } else {
                                         if (lightning == 1) {
+                                            displayEffect(p1.getToken(),startingCard,suceed,true,lightning);
                                             if (suceed == 0) {
                                                 drawCards(p1,1);
-                                                playerChallengeDraw4Process(p4,p1,startingCard,turn,numPlay,startColor,suceed);
-                                                turnStunned++;
-                                                if (turnStunned == 3) {
-                                                    turnStunned = 0;
-                                                    lightning = 0;
-                                                }
+                                                displayEffect(p1.getToken(),startingCard,suceed);
+                                                drawCards(p1,4);
+                                                expiredStun(1,lightning,turnStunned);
                                             } else {
                                                 turn = 1;
                                                 lightning = 0;
@@ -4657,14 +4111,12 @@ int main() {
                                         displayEffect(p3.getToken(),startingCard,suceed);
                                     } else {
                                         if (lightning == 3) {
+                                            displayEffect(p3.getToken(),startingCard,suceed,true,lightning);
                                             if (suceed == 0) {
                                                 drawCards(p3,1);
-                                                cpuChallengeDraw4Process(p4,p3,startingCard,turn,numPlay,startColor,suceed);
-                                                turnStunned++;
-                                                if (turnStunned == 3) {
-                                                    turnStunned = 0;
-                                                    lightning = 0;
-                                                }
+                                                displayEffect(p3.getToken(),startingCard,suceed);
+                                                drawCards(p3,4);
+                                                expiredStun(3,lightning,turnStunned);
                                             } else {
                                                 turn = 3;
                                                 lightning = 0;
@@ -4679,58 +4131,42 @@ int main() {
                                 startingCard.changeFaceCard(Face("WILD"));
                                 if (clockwise == true) {
                                     if (lightning == 1) {
-                                        std::string coinDecision = "";
-                                        std::cout << "Player 1, do you wish to take a coin flip for a chance to be freed? (+0/1 Y, +0 N) (Y/N): ";
-                                        std::cin >> coinDecision;
-                                        if (coinDecision == "Y") {
-                                            std::cout << "Your fate is in God's hands now..." << std::endl;
-                                            sleep_for(seconds(5));
-                                            int freed = rand()%2;
-                                            if (freed == 1) {
-                                                std::cout << "SUCCESS! Player 1 have been freed! Cancelling STUN effect..." << std::endl;
-                                                suceed = 1;
+                                        bool tookC = true;
+                                        coinFlipChallenge(1,suceed,tookC);
+                                        if (tookC == false) {
+                                            expiredStun(1,lightning,turnStunned);
+                                            if (numPlay == 4) {
+                                                turn = 4;
+                                            }
+                                        } else {
+                                            if (suceed == 1) {
                                                 turn = 1;
                                                 lightning = 0;
                                                 turnStunned = 0;
                                             } else {
-                                                std::cout << "FAIL! Player 1 failed the coin flip. Player 1 will draw 1 penalty card and suffer STUN effect..." << std::endl;
-                                                suceed = 0;
                                                 drawCards(p1,1);
-                                                turn = 4;
-                                                turnStunned++;
-                                                if (turnStunned == 3) {
-                                                    turnStunned = 0;
-                                                    lightning = 0;
-                                                }
+                                                turn = 2;
+                                                expiredStun(1,lightning,turnStunned);
                                             }
-                                        } else {
-                                            std::cout << "Player 1 didn't take the coin flip. Player 1 will suffer STUN effect..." << std::endl;
                                         }
+                                        sleep_for(seconds(3));
                                     } else {
                                         turn = 1;
                                     }
                                 } else {
                                     if (lightning == 3) {
-                                        std::cout << "CPU " << 3  << " awaiting decision: take the coin flip for a chance to be freed? " << std::endl;
-                                        sleep_for(seconds(5));
-                                        int freed = rand()%2;
-                                        if (freed == 1) {
-                                            std::cout << "SUCCESS! CPU " << 3 << " have been freed! Cancelling STUN effect..." << std::endl;
+                                        bool tookC = true;
+                                        coinFlipChallenge(3,suceed,tookC);
+                                        if (suceed == 1) {
                                             turn = 3;
-                                            suceed = 1;
                                             lightning = 0;
                                             turnStunned = 0;
-                                        } else {
-                                            std::cout << "FAIL! CPU " << 3  << " failed the coin flip. CPU " << 3 << " will draw 1 penalty card and suffer STUN effect..." << std::endl;
-                                            suceed = 0;
-                                            drawCards(p3,1);
-                                            turn = 4;
-                                            turnStunned++;
-                                            if (turnStunned == 3) {
-                                                turnStunned = 0;
-                                                lightning = 0;
-                                            }
+                                        } else if (suceed == 0) {
+                                            drawCards(p4,1);
+                                            turn = 3;
+                                            expiredStun(4,lightning,turnStunned);
                                         }
+                                        sleep_for(seconds(3));
                                     } else {
                                         turn = 3;
                                     }
@@ -4749,63 +4185,48 @@ int main() {
                                     }
                                     turnStunned = 1;
                                 } else {
-                                    if (p3.getDeck().getNumberOfCards() == 1) {
+                                    if (p4.getDeck().getNumberOfCards() == 1) {
                                         std::cout << "Last card of the game! Now treated as standard WILD card. " << std::endl;
                                     } else {
                                         std::cout << "LIGHTNING ALREADY ACTIVE! Now treated as standard WILD card. " << std::endl;
                                         if (clockwise == true) {
                                             if (lightning == 1) {
-                                                std::string coinDecision = "";
-                                                std::cout << "Player 1, do you wish to take a coin flip for a chance to be freed? (+0/1 Y, +0 N) (Y/N): ";
-                                                std::cin >> coinDecision;
-                                                if (coinDecision == "Y") {
-                                                    std::cout << "Your fate is in God's hands now..." << std::endl;
-                                                    sleep_for(seconds(5));
-                                                    int freed = rand()%2;
-                                                    if (freed == 1) {
-                                                        std::cout << "SUCCESS! Player 1 have been freed! Cancelling STUN effect..." << std::endl;
-                                                        suceed = 1;
+                                                bool tookC = true;
+                                                coinFlipChallenge(1,suceed,tookC);
+                                                if (tookC == false) {
+                                                    expiredStun(1,lightning,turnStunned);
+                                                    if (numPlay == 4) {
+                                                        turn = 4;
+                                                    }
+                                                } else {
+                                                    if (suceed == 1) {
                                                         turn = 1;
                                                         lightning = 0;
                                                         turnStunned = 0;
                                                     } else {
-                                                        std::cout << "FAIL! Player 1 failed the coin flip. Player 1 will draw 1 penalty card and suffer STUN effect..." << std::endl;
-                                                        suceed = 0;
                                                         drawCards(p1,1);
                                                         turn = 2;
-                                                        turnStunned++;
-                                                        if (turnStunned == 3) {
-                                                            turnStunned = 0;
-                                                            lightning = 0;
-                                                        }
+                                                        expiredStun(1,lightning,turnStunned);
                                                     }
-                                                } else {
-                                                    std::cout << "Player 1 didn't take the coin flip. Player 1 will suffer STUN effect..." << std::endl;
                                                 }
+                                                sleep_for(seconds(3));
                                             } else {
                                                 turn = 1;
                                             }
                                         } else {
                                             if (lightning == 3) {
-                                                std::cout << "CPU " << 3  << " awaiting decision: take the coin flip for a chance to be freed? " << std::endl;
-                                                sleep_for(seconds(5));
-                                                int freed = rand()%2;
-                                                if (freed == 1) {
-                                                    std::cout << "SUCCESS! CPU " << 3 << " have been freed! Cancelling STUN effect..." << std::endl;
+                                                bool tookC = true;
+                                                coinFlipChallenge(3,suceed,tookC);
+                                                if (suceed == 1) {
                                                     turn = 3;
-                                                    suceed = 1;
                                                     lightning = 0;
-                                                } else {
-                                                    std::cout << "FAIL! CPU " << 3  << " failed the coin flip. CPU " << 3 << " will draw 1 penalty card and suffer STUN effect..." << std::endl;
-                                                    suceed = 0;
-                                                    drawCards(p3,1);
-                                                    turn = 2;
-                                                    turnStunned++;
-                                                    if (turnStunned == 3) {
-                                                        turnStunned = 0;
-                                                        lightning = 0;
-                                                    }
+                                                    turnStunned = 0;
+                                                } else if (suceed == 0) {
+                                                    drawCards(p4,1);
+                                                    turn = 3;
+                                                    expiredStun(4,lightning,turnStunned);
                                                 }
+                                                sleep_for(seconds(3));
                                             } else {
                                                 turn = 3;
                                             }
@@ -4818,20 +4239,24 @@ int main() {
                             startingCard.changeColorCard(p4.getDeck().getCardAtPos(p4.getDeck().getNumberOfCards()-1).getColorCard());
                             startingCard.changeFaceCard(p4.getDeck().getCardAtPos(p4.getDeck().getNumberOfCards()-1).getFaceCard());
                             if (clockwise == true) {
-                                displayEffect(p1.getToken(),startingCard,suceed,true,lightning);
+                                if (p4.getDeck().getNumberOfCards() == 1) {
+                                    displayEffect(p1.getToken(),startingCard,suceed,true,0);
+                                } else {
+                                    displayEffect(p1.getToken(),startingCard,suceed,true,lightning);
+                                }
                             } else {
-                                displayEffect(p3.getToken(),startingCard,suceed,true,lightning);
+                                if (p4.getDeck().getNumberOfCards() == 1) {
+                                    displayEffect(p3.getToken(),startingCard,suceed,true,0);
+                                } else {
+                                    displayEffect(p3.getToken(),startingCard,suceed,true,lightning);
+                                }
                             }
                             if (startingCard.getFaceCard().getFace().compare("DRAW2") == 0) {
                                 if (clockwise == true) {
                                     if (suceed == 0) {
                                         drawCards(p1,3);
                                         turn = 2;
-                                        turnStunned++;
-                                        if (turnStunned == 3) {
-                                            turnStunned = 0;
-                                            lightning = 0;
-                                        }
+                                        expiredStun(1,lightning,turnStunned);
                                     } else if (suceed == 1) {
                                         turn = 1;
                                         lightning = 0;
@@ -4844,11 +4269,7 @@ int main() {
                                     if (suceed == 0) {
                                         drawCards(p3,3);
                                         turn = 2;
-                                        turnStunned++;
-                                        if (turnStunned == 3) {
-                                            turnStunned = 0;
-                                            lightning = 0;
-                                        }
+                                        expiredStun(3,lightning,turnStunned);
                                     } else if (suceed == 1) {
                                         turn = 3;
                                         lightning = 0;
@@ -4875,15 +4296,12 @@ int main() {
                                         turn = 3;
                                     }
                                 } else if (suceed == 0) {
-                                    turnStunned++;
-                                    if (turnStunned == 3) {
-                                        turnStunned = 0;
-                                        lightning = 0;
-                                    }
                                     if (clockwise) {
                                         drawCards(p1,1);
+                                        expiredStun(1,lightning,turnStunned);
                                     } else {
                                         drawCards(p3,1);
+                                        expiredStun(3,lightning,turnStunned);
                                     }
                                     turn = 2;
                                 } else {
@@ -4896,124 +4314,90 @@ int main() {
                             startingCard.changeFaceCard(p4.getDeck().getCardAtPos(p4.getDeck().getNumberOfCards()-1).getFaceCard());
                             if (clockwise == false) {
                                 if (lightning == 3) {
-                                    std::cout << "CPU " << 3  << " awaiting decision: take the coin flip for a chance to be freed? " << std::endl;
-                                    sleep_for(seconds(5));
-                                    int freed = rand()%2;
-                                    if (freed == 1) {
-                                        std::cout << "SUCCESS! CPU " << 3 << " have been freed! Cancelling STUN effect..." << std::endl;
+                                    bool tookC = true;
+                                    coinFlipChallenge(3,suceed,tookC);
+                                    if (suceed == 1) {
                                         turn = 3;
-                                        suceed = 1;
                                         lightning = 0;
                                         turnStunned = 0;
-                                    } else {
-                                        std::cout << "FAIL! CPU " << 3  << " failed the coin flip. CPU " << 3 << " will draw 1 penalty card and suffer STUN effect..." << std::endl;
-                                        suceed = 0;
-                                        drawCards(p3,1);
-                                        if (numPlay == 4) {
-                                            turn = 2;
-                                        }
-                                        turnStunned++;
-                                        if (turnStunned == 3) {
-                                            turnStunned = 0;
-                                            lightning = 0;
-                                        }
+                                    } else if (suceed == 0) {
+                                        drawCards(p4,1);
+                                        turn = 3;
+                                        expiredStun(4,lightning,turnStunned);
                                     }
+                                    sleep_for(seconds(3));
                                 } else {
                                     turn = 3;
                                 }
                             } else {
                                 if (lightning == 1) {
-                                    std::string dec = "";
-                                    std::cout << "Player 1, do you wish to take a coin flip for a chance to be freed? (+0/1 Y, +0 N) (Y/N): ";
-                                    std::cin >> dec;
-                                    if (dec == "Y") {
-                                        std::cout << "Your fate is in God's hands now..." << std::endl;
-                                        sleep_for(seconds(5));
-                                        int freed = rand()%2;
-                                        if (freed == 1) {
-                                            std::cout << "SUCCESS! Player " << 1 << " have been freed! Cancelling STUN effect..." << std::endl;
+                                    bool tookC = true;
+                                    coinFlipChallenge(1,suceed,tookC);
+                                    if (tookC == false) {
+                                        expiredStun(1,lightning,turnStunned);
+                                        if (numPlay == 4) {
+                                            turn = 4;
+                                        }
+                                    } else {
+                                        if (suceed == 1) {
                                             turn = 1;
-                                            suceed = 1;
                                             lightning = 0;
                                             turnStunned = 0;
                                         } else {
-                                            std::cout << "FAIL! Player 1 failed the coin flip. Player 1 will draw 1 penalty card and suffer STUN effect..." << std::endl;
-                                            suceed = 0;
                                             drawCards(p1,1);
-                                            turn = 4;
-                                            turnStunned++;
-                                            if (turnStunned == 3) {
-                                                turnStunned = 0;
-                                                lightning = 0;
-                                            }
+                                            turn = 2;
+                                            expiredStun(1,lightning,turnStunned);
                                         }
-                                    } else {
-                                        std::cout << "Player 1 didn't take the coin flip. Player 1 will suffer STUN effect..." << std::endl;
                                     }
+                                    sleep_for(seconds(3));
                                 } else {
                                     turn = 1;
                                 }  
                             }
                         }
                         p4.placeCard(p4.getDeck().getNumberOfCards()-1);
+                        if (p4.getDeck().getNumberOfCards() == 1) {
+                            std::cout << "CPU 4: UNO!" << std::endl;
+                        }
                     } else {
                         if (clockwise == false) {
                             if (lightning == 3) {
-                                std::cout << "CPU " << 3  << " awaiting decision: take the coin flip for a chance to be freed? " << std::endl;
-                                sleep_for(seconds(5));
-                                int freed = rand()%2;
-                                if (freed == 1) {
-                                    std::cout << "SUCCESS! CPU " << 3 << " have been freed! Cancelling STUN effect..." << std::endl;
+                                bool tookC = true;
+                                coinFlipChallenge(3,suceed,tookC);
+                                if (suceed == 1) {
                                     turn = 3;
-                                    suceed = 1;
                                     lightning = 0;
                                     turnStunned = 0;
-                                } else {
-                                    std::cout << "FAIL! CPU " << 3  << " failed the coin flip. CPU " << 3 << " will draw 1 penalty card and suffer STUN effect..." << std::endl;
-                                    std::cout << "CPU " << 3 << ": FORFEITED TURN!" << std::endl;
-                                    suceed = 0;
-                                    drawCards(p3,1);
-                                    if (numPlay == 4) {
-                                        turn = 2;
-                                    }
-                                    turnStunned++;
-                                    if (turnStunned == 3) {
-                                        turnStunned = 0;
-                                        lightning = 0;
-                                    }
+                                } else if (suceed == 0) {
+                                    drawCards(p4,1);
+                                    turn = 3;
+                                    expiredStun(4,lightning,turnStunned);
                                 }
+                                sleep_for(seconds(3));
                             } else {
                                 turn = 3;
                             }
                         } else {
                             if (lightning == 1) {
-                                std::string dec = "";
-                                std::cout << "Player 1, do you wish to take a coin flip for a chance to be freed? (+0/1 Y, +0 N) (Y/N): ";
-                                std::cin >> dec;
-                                if (dec == "Y") {
-                                    std::cout << "Your fate is in God's hands now..." << std::endl;
-                                    sleep_for(seconds(5));
-                                    int freed = rand()%2;
-                                    if (freed == 1) {
-                                        std::cout << "SUCCESS! Player " << 1 << " have been freed! Cancelling STUN effect..." << std::endl;
+                                bool tookC = true;
+                                coinFlipChallenge(1,suceed,tookC);
+                                if (tookC == false) {
+                                    expiredStun(1,lightning,turnStunned);
+                                    if (numPlay == 4) {
+                                        turn = 4;
+                                    }
+                                } else {
+                                    if (suceed == 1) {
                                         turn = 1;
-                                        suceed = 1;
                                         lightning = 0;
                                         turnStunned = 0;
                                     } else {
-                                        std::cout << "FAIL! Player 1 failed the coin flip. Player 1 will draw 1 penalty card and suffer STUN effect..." << std::endl;
-                                        suceed = 0;
                                         drawCards(p1,1);
-                                        turn = 4;
-                                        turnStunned++;
-                                        if (turnStunned == 3) {
-                                            turnStunned = 0;
-                                            lightning = 0;
-                                        }
+                                        turn = 2;
+                                        expiredStun(1,lightning,turnStunned);
                                     }
-                                } else {
-                                    std::cout << "Player 1 didn't take the coin flip. Player 1 will suffer STUN effect..." << std::endl;
                                 }
+                                sleep_for(seconds(3));
                             } else {
                                 turn = 1;
                             }  
@@ -5039,7 +4423,7 @@ int main() {
         p1 = Player(Deck(sort(p1.getDeck().getCards())),1,pt1,rounds1);
         p2 = Player(Deck(sort(p2.getDeck().getCards())),2,pt2,rounds2);
         p3 = Player(Deck(sort(p3.getDeck().getCards())),3,pt3,rounds3);
-        p4 = Player(Deck(sort(p1.getDeck().getCards())),4,pt4,rounds4);
+        p4 = Player(Deck(sort(p4.getDeck().getCards())),4,pt4,rounds4);
         //display winner
         if (p1.getDeck().getNumberOfCards() == 0) {
             won1 = p2.getDeck().valueOfDeck();
@@ -5187,7 +4571,7 @@ int main() {
                         pt3 += (p4.getDeck().valueOfDeck() + p1.getDeck().valueOfDeck());
                         won3 = p4.getDeck().valueOfDeck() + p1.getDeck().valueOfDeck();
                         winnings.push_back(3);
-                        if (min(p2.getDeck().valueOfDeck(),p4.getDeck().valueOfDeck()) == p1.getDeck().valueOfDeck()) { 
+                        if (min(p1.getDeck().valueOfDeck(),p4.getDeck().valueOfDeck()) == p1.getDeck().valueOfDeck()) { 
                             std::cout << "3rd: Player 1" << std::endl;
                             std::cout << "4th: CPU 4" << std::endl;           
                             winnings.push_back(1);
@@ -5498,6 +4882,9 @@ int main() {
         c2 = 0;
         c3 = 0;
         c4 = 0;
+        lightning = 0;
+        turnStunned = 0;
+
         makeWhiteSpace();
     }
 
@@ -5581,16 +4968,16 @@ int main() {
             if (tiedExistsAgain[0] == 1) {
                 std::cout << "Player 1 wins after " << rounds << " rounds!" << std::endl;
             } else {
-                std::cout << "CPU " << tiedExistsAgain[0] << " wins after" << maxRound << " rounds!" << std::endl;
+                std::cout << "CPU " << tiedExistsAgain[0] << " wins after " << maxRound << " rounds!" << std::endl;
             }
         } else {
             //winner determination by random draw
             std::cout << "Tied points won and rounds won! Winner will be determined by random!" << std::endl;
             for (unsigned int i = 0; i < tiedExistsAgain.size(); i++) {
                 if (tiedExistsAgain[i] == 1) {
-                    std::cout << i << "= Player 1 victory" << std::endl;
+                    std::cout << i << " = Player 1 victory" << std::endl;
                 } else {
-                    std::cout << i << "= CPU " << tiedExistsAgain[i] << " victory" << std::endl;
+                    std::cout << i << " = CPU " << tiedExistsAgain[i] << " victory" << std::endl;
                 }
             }
             int winner = rand()%(tiedExistsAgain.size());
