@@ -73,6 +73,7 @@
     draw 4 automatically as if you didn't take the challenge
  4. Implement abstraction in code to reduce code line usage
  5. Upload resulting code to GitHub
+
  Update 6/20/2023 v1.1.0
   1. *MAJOR UPDATE!* Introduces a new card: the PARDON card! It will has the following features: 
     a) NOT a normal UNO card that you pick up from deck, but everytime you draw a normal UNO card, you have 1/16 chance of picking
@@ -106,6 +107,14 @@
   1. If you have a PARDON card, it will let you know under your hand
   2. When your turn arrives, there will be an indicator labeling your hand following by the cards you have on you
 
+  Update 6/20/2023 v1.1.2
+  1. Adds a very neat introduction whenever UNO game starts to run
+    a) Starts off with mentioning the name of game, currnt version, and developer
+    b) Allows you to see the rules, point values of different cards, and to play game
+    c) Warns the user to make sure input is in ALL CAPS to properly run the game
+
+  Update 6/20/2023 v1.1.3
+  1. Adds input validation for coin flip and usage of PARDON cards for player
 */
 
 #include <iostream>
@@ -523,8 +532,10 @@ std::vector<int> getPlayablePositions(Deck a, Card start) {
 void coinFlipChallenge(int token, int &suceed, bool &tookChallenge) {
     if (token == 1) {
         std::string coinDecision = "";
-        std::cout << "Player 1, do you wish to take a coin flip for a chance to be freed? (Y/N): ";
-        std::cin >> coinDecision;
+        while (coinDecision != "Y" and coinDecision != "N") {
+            std::cout << "Player 1, do you wish to take a coin flip for a chance to be freed? (Y/N): ";
+            std::cin >> coinDecision;
+        }
         if (coinDecision == "Y") {
             std::cout << "Your fate is in God's hands now..." << std::endl;
             sleep_for(seconds(5));
@@ -889,7 +900,67 @@ int main() {
     std::vector<Card> cards3;
     std::vector<Card> cards4;
     std::vector<int> winnings;
-    std::cout << "Welcome to UNO Lightning! Play in an UNO Lightning match where the goal is to be the first player to remove their card. Please make sure all of your inputs are in ALL CAPS or your input will NOT be processed!" << std::endl;
+    makeWhiteSpace();
+    std::cout << "UNO Lightning v1.1.3 (a C++ Development) " << std::endl;
+    std::cout << "Developed by: Kenneth Lieu" << std::endl;
+    sleep_for(seconds(10));
+    makeWhiteSpace();
+    std::string familiar = "";
+    bool validOption = false;
+    while (validOption == false) {
+        std::cout << "Welcome to UNO Lightning! We are excited to see you here! Are you familiar with how this game works? (Type R to see the rules, Type P to play the game): ";
+        std::cin >> familiar;
+        if (familiar == "R" or familiar == "P") {
+            validOption = true;
+        }
+    }
+
+    if (familiar == "R") {
+        std::cout << "Welcome to the very first development of the UNO Lightning game! Rules are similar to the UNO Classic game, but with a twist! " << std::endl;
+        sleep_for(seconds(5));
+        std::cout << "First, there will be two new cards! LIGHTNING card and a PARDON card! LIGHTNING card is a WILD card where after changing color, will stun you for 1-3 turns!" << std::endl;
+        sleep_for(seconds(5));
+        std::cout << "Don't fret, as you can be freed from STUN via coin flip. If coin lands on SUCCESS, you will be freed and cancel any effects played on you!" << std::endl;
+        sleep_for(seconds(5));
+        std::cout << "However, if the coin lands on FAIL, you will remain STUNNED and suffer any effects played on you, and you will draw 1 PENALTY card!" << std::endl;
+        sleep_for(seconds(5));
+        std::cout << "PARDON card is NOT a normal UNO card that you can play, but a SPECIAL card that you can use when an effect is played on you, to free yourself from those effects for that turn only!" << std::endl;
+        sleep_for(seconds(5));
+        std::cout << "It will prevent yourself from being stunned, skipped, and having to draw cards from +2 and +4 wild card. However, it cannot be used to free yourself once stunned. " << std::endl;
+        sleep_for(seconds(5));
+        std::cout << "Only ONE pardon card can be owned by you or your opponents at ANY time. Once it is picked up, another cannot be received until it is used up!" << std::endl;
+        sleep_for(seconds(5));
+        validOption = false;
+        while (validOption == false) {
+            std::cout << "Type S to see points system per card, or P to play: ";
+            std::cin >> familiar;
+            if (familiar == "S" or familiar == "P") {
+                validOption = true;
+            }
+        }
+        if (familiar == "S") {
+            std::cout << "Number cards = face values (0-9 points)" << std::endl;
+            std::cout << "SKIP, REVERSE, DRAW 2 cards = 20 points" << std::endl;
+            std::cout << "WILD, DRAW4WILD = 50 points" << std::endl;
+            std::cout << "LIGHTNING = 60 points" << std::endl;
+            std::cout << "PARDON = 100 points" << std::endl;
+            sleep_for(seconds(5));
+            validOption = false;
+            while (validOption == false) {
+                std::cout << "Type P to play: ";
+                std::cin >> familiar;
+                if (familiar == "P") {
+                    validOption = true;
+                }
+            }
+        }
+    }
+
+    std::cout << "Make sure your input is in ALL CAPS or else your input will NOT be processed properly! " << std::endl;
+    sleep_for(seconds(5));
+
+    makeWhiteSpace();
+    
     std::string optionChosen = "s";
     bool validChoice = false;
 
@@ -911,7 +982,7 @@ int main() {
         std::cout << "Chosen choice: ";
         std::cin >> optionChosen;
         if(isNumber(optionChosen) == false) {
-            std::cout << "Invalid choice! Choice cannot involve nonnumeric characters! cannot process choice!" << std::endl;
+            std::cout << "Invalid choice! Choice cannot involve nonnumeric characters! Cannot process choice!" << std::endl;
         } else if (isNumber(optionChosen) == true and (std::stoi(optionChosen) > 4 or std::stoi(optionChosen) < 1)) {
             std::cout << "Invalid choice! Choice number MUST be 1, 2, 3, or 4! Cannot process choice!" << std::endl;
         } else {
@@ -2689,9 +2760,11 @@ int main() {
                                             }
                                         } else {
                                             if (pardon == 1) {
-                                                std::cout << "Do you wish to use your PARDON card on the DRAW4WILD played on you? (Y/N): ";
-                                                std::string played;
-                                                std::cin >> played;
+                                                std::string played = "x";
+                                                while (played != "Y" and played != "N") {
+                                                    std::cout << "Do you wish to use your PARDON card on the DRAW4WILD played on you? (Y/N): ";
+                                                    std::cin >> played;
+                                                }
                                                 if (played == "Y") {
                                                     std::cout << "You decided to use PARDON card. You are IMMUNE to the DRAW 4 effect for this turn!" << std::endl;
                                                     turn = 1;
@@ -2722,9 +2795,11 @@ int main() {
                                         }
                                     } else {
                                         if (pardon == 1) {
-                                            std::cout << "Do you wish to use your PARDON card on the DRAW4WILD played on you? (Y/N): ";
-                                            std::string played;
-                                            std::cin >> played;
+                                            std::string played = "x";
+                                            while (played != "Y" and played != "N") {
+                                                std::cout << "Do you wish to use your PARDON card on the DRAW4WILD played on you? (Y/N): ";
+                                                std::cin >> played;
+                                            }
                                             if (played == "Y") {
                                                 std::cout << "You decided to use PARDON card. You are IMMUNE to the DRAW 4 effect for this turn!" << std::endl;
                                                 turn = 1;
@@ -2789,9 +2864,11 @@ int main() {
                             if (lightning == 0 and p2.getDeck().getNumberOfCards() != 1) {
                                 if (clockwise == false or numPlay == 2) {
                                     if (pardon == 1) {
-                                        std::cout << "Do you wish to use your PARDON card on the LIGHTNING card played on you? (Y/N): ";
-                                        std::string played;
-                                        std::cin >> played;
+                                        std::string played = "x";
+                                        while (played != "Y" and played != "N") {
+                                            std::cout << "Do you wish to use your PARDON card on the DRAW4WILD played on you? (Y/N): ";
+                                            std::cin >> played;
+                                        }
                                         if (played == "Y") {
                                             std::cout << "You decided to use PARDON card. You are IMMUNE to the STUN effect for this turn!" << std::endl;
                                             turn = 1;
@@ -2952,9 +3029,11 @@ int main() {
                                         turnStunned = 0;
                                     } else {
                                         if (pardon == 1) {
-                                            std::cout << "Do you wish to use your PARDON card on the DRAW 2 played on you? (Y/N): ";
-                                            std::string used;
-                                            std::cin >> used;
+                                            std::string used = "x";
+                                            while (used != "Y" and used != "N") {
+                                                std::cout << "Do you wish to use your PARDON card on the DRAW4WILD played on you? (Y/N): ";
+                                                std::cin >> used;
+                                            }
                                             if (used == "Y") {
                                                 std::cout << "You decided to use your PARDON card. You are IMMUNE to the DRAW 2 effect for this turn!" << std::endl;
                                                 turn = 1;
@@ -2980,10 +3059,12 @@ int main() {
                                     turnStunned = 0;
                                 } else {
                                     if (pardon == 1) {
-                                        std::cout << "Do you wish to use your PARDON card on the DRAW 2 played on you? (Y/N): ";
-                                        std::string used;
-                                        std::cin >> used;
-                                        if (used == "Y") {
+                                        std::string played = "x";
+                                        while (played != "Y" and played != "N") {
+                                            std::cout << "Do you wish to use your PARDON card on the DRAW4WILD played on you? (Y/N): ";
+                                            std::cin >> played;
+                                        }
+                                        if (played == "Y") {
                                             std::cout << "You decided to use your PARDON card. You are IMMUNE to the DRAW 2 effect for this turn!" << std::endl;
                                             turn = 1;
                                             pardon = -1;
@@ -3030,10 +3111,12 @@ int main() {
                                         std::cout << "CPU 3 decided to use PARDON card. CPU 3 is IMMUNE to the SKIP effect for this turn!" << std::endl;
                                         pardon = -1;
                                     } else if (!clockwise and pardon == 1) {
-                                        std::cout << "Do you wish to use your PARDON card on the SKIP played on you? (Y/N): ";
-                                        std::string used;
-                                        std::cin >> used;
-                                        if (used == "Y") {
+                                        std::string played = "x";
+                                        while (played != "Y" and played != "N") {
+                                            std::cout << "Do you wish to use your PARDON card on the DRAW4WILD played on you? (Y/N): ";
+                                            std::cin >> played;
+                                        }
+                                        if (played == "Y") {
                                             std::cout << "You decided to use your PARDON card. You are IMMUNE to the SKIP effect for this turn!" << std::endl;
                                             turn = 1;
                                             pardon = -1;
@@ -3054,10 +3137,12 @@ int main() {
                                     drawCards(p1,1,pardon);
                                     expiredStun(1,lightning,turnStunned);
                                 } else {
-                                    std::cout << "Do you wish to use your PARDON card on the SKIP played on you? (Y/N): ";
-                                    std::string used;
-                                    std::cin >> used;
-                                    if (used == "Y") {
+                                    std::string played = "x";
+                                    while (played != "Y" and played != "N") {
+                                        std::cout << "Do you wish to use your PARDON card on the DRAW4WILD played on you? (Y/N): ";
+                                        std::cin >> played;
+                                    }
+                                    if (played == "Y") {
                                         std::cout << "You decided to use your PARDON card. You are IMMUNE to the SKIP effect for this turn!" << std::endl;
                                         turn = 1;
                                         pardon = -1;
@@ -3187,9 +3272,11 @@ int main() {
                                                 }
                                             } else {
                                                 if (pardon == 1) {
-                                                    std::cout << "Do you wish to use your PARDON card on the DRAW4WILD played on you? (Y/N): ";
-                                                    std::string played;
-                                                    std::cin >> played;
+                                                    std::string played = "x";
+                                                    while (played != "Y" and played != "N") {
+                                                        std::cout << "Do you wish to use your PARDON card on the DRAW4WILD played on you? (Y/N): ";
+                                                        std::cin >> played;
+                                                    }
                                                     if (played == "Y") {
                                                         std::cout << "You decided to use PARDON card. You are IMMUNE to the DRAW 4 effect for this turn!" << std::endl;
                                                         turn = 1;
@@ -3221,9 +3308,11 @@ int main() {
                                             }
                                         } else {
                                             if (pardon == 1) {
-                                                std::cout << "Do you wish to use your PARDON card on the DRAW4WILD played on you? (Y/N): ";
-                                                std::string played;
-                                                std::cin >> played;
+                                                std::string played = "x";
+                                                while (played != "Y" and played != "N") {
+                                                    std::cout << "Do you wish to use your PARDON card on the DRAW4WILD played on you? (Y/N): ";
+                                                    std::cin >> played;
+                                                }
                                                 if (played == "Y") {
                                                     std::cout << "You decided to use PARDON card. You are IMMUNE to the DRAW 4 effect for this turn!" << std::endl;
                                                     turn = 1;
@@ -3288,9 +3377,11 @@ int main() {
                                 if (lightning == 0 and p2.getDeck().getNumberOfCards() != 1) {
                                     if (clockwise == false or numPlay == 2) {
                                         if (pardon == 1) {
-                                            std::cout << "Do you wish to use your PARDON card on the LIGHTNING card played on you? (Y/N): ";
-                                            std::string played;
-                                            std::cin >> played;
+                                            std::string played = "x";
+                                            while (played != "Y" and played != "N") {
+                                                std::cout << "Do you wish to use your PARDON card on the DRAW4WILD played on you? (Y/N): ";
+                                                std::cin >> played;
+                                            }
                                             if (played == "Y") {
                                                 std::cout << "You decided to use PARDON card. You are IMMUNE to the STUN effect for this turn!" << std::endl;
                                                 turn = 1;
@@ -3451,10 +3542,12 @@ int main() {
                                             turnStunned = 0;
                                         } else {
                                             if (pardon == 1) {
-                                                std::cout << "Do you wish to use your PARDON card on the DRAW 2 played on you? (Y/N): ";
-                                                std::string used;
-                                                std::cin >> used;
-                                                if (used == "Y") {
+                                                std::string played = "x";
+                                                while (played != "Y" and played != "N") {
+                                                    std::cout << "Do you wish to use your PARDON card on the DRAW4WILD played on you? (Y/N): ";
+                                                    std::cin >> played;
+                                                }
+                                                if (played == "Y") {
                                                     std::cout << "You decided to use your PARDON card. You are IMMUNE to the DRAW 2 effect for this turn!" << std::endl;
                                                     turn = 1;
                                                     pardon = -1;
@@ -3479,10 +3572,12 @@ int main() {
                                         turnStunned = 0;
                                     } else {
                                         if (pardon == 1) {
-                                            std::cout << "Do you wish to use your PARDON card on the DRAW 2 played on you? (Y/N): ";
-                                            std::string used;
-                                            std::cin >> used;
-                                            if (used == "Y") {
+                                            std::string played = "x";
+                                            while (played != "Y" and played != "N") {
+                                                std::cout << "Do you wish to use your PARDON card on the DRAW4WILD played on you? (Y/N): ";
+                                                std::cin >> played;
+                                            }
+                                            if (played == "Y") {
                                                 std::cout << "You decided to use your PARDON card. You are IMMUNE to the DRAW 2 effect for this turn!" << std::endl;
                                                 turn = 1;
                                                 pardon = -1;
@@ -3529,10 +3624,12 @@ int main() {
                                             std::cout << "CPU 3 decided to use PARDON card. CPU 3 is IMMUNE to the SKIP effect for this turn!" << std::endl;
                                             pardon = -1;
                                         } else if (!clockwise and pardon == 1) {
-                                            std::cout << "Do you wish to use your PARDON card on the SKIP played on you? (Y/N): ";
-                                            std::string used;
-                                            std::cin >> used;
-                                            if (used == "Y") {
+                                            std::string played = "x";
+                                            while (played != "Y" and played != "N") {
+                                                std::cout << "Do you wish to use your PARDON card on the DRAW4WILD played on you? (Y/N): ";
+                                                std::cin >> played;
+                                            }
+                                            if (played == "Y") {
                                                 std::cout << "You decided to use your PARDON card. You are IMMUNE to the SKIP effect for this turn!" << std::endl;
                                                 turn = 1;
                                                 pardon = -1;
@@ -4474,9 +4571,11 @@ int main() {
                                         }
                                     } else {
                                         if (pardon == 1) {
-                                            std::cout << "Do you wish to use your PARDON card on the DRAW4WILD played on you? (Y/N): ";
-                                            std::string played;
-                                            std::cin >> played;
+                                            std::string played = "x";
+                                            while (played != "Y" and played != "N") {
+                                                std::cout << "Do you wish to use your PARDON card on the DRAW4WILD played on you? (Y/N): ";
+                                                std::cin >> played;
+                                            }
                                             if (played == "Y") {
                                                 std::cout << "You decided to use PARDON card. You are IMMUNE to the DRAW 4 effect for this turn!" << std::endl;
                                                 turn = 1;
@@ -4577,9 +4676,11 @@ int main() {
                                     }
                                 } else {
                                     if (pardon == 1) {
-                                        std::cout << "Do you wish to use your PARDON card on the LIGHTNING card played on you? (Y/N): ";
-                                        std::string played;
-                                        std::cin >> played;
+                                        std::string played = "x";
+                                        while (played != "Y" and played != "N") {
+                                            std::cout << "Do you wish to use your PARDON card on the DRAW4WILD played on you? (Y/N): ";
+                                            std::cin >> played;
+                                        }
                                         if (played == "Y") {
                                             std::cout << "You decided to use PARDON card. You are IMMUNE to the STUN effect for this turn!" << std::endl;
                                             turn = 1;
@@ -4691,9 +4792,11 @@ int main() {
                                     lightning = 0;
                                 } else {
                                     if (pardon == 1) {
-                                        std::cout << "Do you wish to use your PARDON card on the DRAW 2 played on you? (Y/N): ";
-                                        std::string played;
-                                        std::cin >> played;
+                                        std::string played = "x";
+                                        while (played != "Y" and played != "N") {
+                                            std::cout << "Do you wish to use your PARDON card on the DRAW4WILD played on you? (Y/N): ";
+                                            std::cin >> played;
+                                        }
                                         if (played == "Y") {
                                             std::cout << "You decided to use PARDON card. You are IMMUNE to the DRAW 2 effect for this turn!" << std::endl;
                                             turn = 1;
@@ -4755,9 +4858,11 @@ int main() {
                                 turn = 2;
                             } else {
                                 if (pardon == 1 and clockwise) {
-                                    std::cout << "Do you wish to use your PARDON card on the SKIP played on you? (Y/N): ";
-                                    std::string played;
-                                    std::cin >> played;
+                                    std::string played = "x";
+                                    while (played != "Y" and played != "N") {
+                                        std::cout << "Do you wish to use your PARDON card on the DRAW4WILD played on you? (Y/N): ";
+                                        std::cin >> played;
+                                    }
                                     if (played == "Y") {
                                         std::cout << "You decided to use PARDON card. You are IMMUNE to the SKIP effect for this turn!" << std::endl;
                                         turn = 1;
@@ -4864,9 +4969,11 @@ int main() {
                                             }
                                         } else {
                                             if (pardon == 1) {
-                                                std::cout << "Do you wish to use your PARDON card on the DRAW4WILD played on you? (Y/N): ";
-                                                std::string played;
-                                                std::cin >> played;
+                                                std::string played = "x";
+                                                while (played != "Y" and played != "N") {
+                                                    std::cout << "Do you wish to use your PARDON card on the DRAW4WILD played on you? (Y/N): ";
+                                                    std::cin >> played;
+                                                }
                                                 if (played == "Y") {
                                                     std::cout << "You decided to use PARDON card. You are IMMUNE to the DRAW 4 effect for this turn!" << std::endl;
                                                     turn = 1;
@@ -4967,9 +5074,11 @@ int main() {
                                         }
                                     } else {
                                         if (pardon == 1) {
-                                            std::cout << "Do you wish to use your PARDON card on the LIGHTNING card played on you? (Y/N): ";
-                                            std::string played;
-                                            std::cin >> played;
+                                            std::string played = "x";
+                                            while (played != "Y" and played != "N") {
+                                                std::cout << "Do you wish to use your PARDON card on the DRAW4WILD played on you? (Y/N): ";
+                                                std::cin >> played;
+                                            }
                                             if (played == "Y") {
                                                 std::cout << "You decided to use PARDON card. You are IMMUNE to the STUN effect for this turn!" << std::endl;
                                                 turn = 1;
@@ -5081,9 +5190,11 @@ int main() {
                                         lightning = 0;
                                     } else {
                                         if (pardon == 1) {
-                                            std::cout << "Do you wish to use your PARDON card on the DRAW 2 played on you? (Y/N): ";
-                                            std::string played;
-                                            std::cin >> played;
+                                            std::string played = "x";
+                                            while (played != "Y" and played != "N") {
+                                                std::cout << "Do you wish to use your PARDON card on the DRAW4WILD played on you? (Y/N): ";
+                                                std::cin >> played;
+                                            }
                                             if (played == "Y") {
                                                 std::cout << "You decided to use PARDON card. You are IMMUNE to the DRAW 2 effect for this turn!" << std::endl;
                                                 turn = 1;
@@ -5145,9 +5256,11 @@ int main() {
                                     turn = 2;
                                 } else {
                                     if (pardon == 1 and clockwise) {
-                                        std::cout << "Do you wish to use your PARDON card on the SKIP played on you? (Y/N): ";
-                                        std::string played;
-                                        std::cin >> played;
+                                        std::string played = "x";
+                                        while (played != "Y" and played != "N") {
+                                            std::cout << "Do you wish to use your PARDON card on the DRAW4WILD played on you? (Y/N): ";
+                                            std::cin >> played;
+                                        }
                                         if (played == "Y") {
                                             std::cout << "You decided to use PARDON card. You are IMMUNE to the SKIP effect for this turn!" << std::endl;
                                             turn = 1;

@@ -117,6 +117,12 @@
  1. Player/CPUs will no longer be skipped or have to draw 2 cards if those are the starting cards
  2. Player 1 will be referred to as You
  3. When your turn arrives, there will be an indicator labeling your hand following by the cards you have on you
+
+ Update 6/20/2023 v1.4.4
+ 1. Adds a very neat introduction whenever UNO game starts to run
+    a) Starts off with mentioning the name of game, currnt version, and developer
+    b) Allows you to see the rules, point values of different cards, and to play game
+    c) Warns the user to make sure input is in ALL CAPS to properly run the game
 */
 
 #include <iostream>
@@ -783,7 +789,68 @@ int main() {
     std::vector<Card> cards3;
     std::vector<Card> cards4;
     std::vector<int> winnings;
-    std::cout << "Welcome to UNO Classic! Play in an UNO Classic match where the goal is to be the first player to remove their card. Please make sure all of your inputs are in ALL CAPS or your input will NOT be processed!" << std::endl;
+
+    makeWhiteSpace();
+    std::cout << "UNO Classic v1.4.4 (a C++ Development) " << std::endl;
+    std::cout << "Developed by: Kenneth Lieu" << std::endl;
+
+    sleep_for(seconds(10));
+    makeWhiteSpace();
+    std::string familiar = "";
+    bool validOption = false;
+    while (validOption == false) {
+        std::cout << "Welcome to UNO Classic! We are excited to see you here! Are you familiar with how this game works? (Type R to see the rules, Type P to play the game): ";
+        std::cin >> familiar;
+        if (familiar == "R" or familiar == "P") {
+            validOption = true;
+        }
+    }
+
+    if (familiar == "R") {
+        std::cout << "Here are the rules for the UNO Classic game: " << std::endl;
+        sleep_for(seconds(5));
+        std::cout << "You will be presented with 7 cards, same as your opponents. Your goal is to be the first one to remove ALL cards from your hand. " << std::endl;
+        sleep_for(seconds(5));
+        std::cout << "You are allowed to only play cards that matches the face value of placed card, number, or through playing a WILD card." << std::endl;
+        sleep_for(seconds(5));
+        std::cout << "If you have NO playable card, you must draw a card. If that card is playable, you can play it. Otherwise, you end your turn. " << std::endl;
+        sleep_for(seconds(5));
+        std::cout << "You MUST shout UNO by typing U before playing your second to last card. If you don't you will draw 2 cards for missing shout! " << std::endl;
+        sleep_for(seconds(5));
+        std::cout << "SKIP cards skips your turn, REVERSE reverses the order of play, DRAW2 makes you draw 2 cards, WILD changes color, DRAW4WILD is same as WILD but forces you to draw 4!" << std::endl;
+        sleep_for(seconds(5));
+        std::cout << "Beware! DRAW4WILD can be challenged! You can challenge your opponent's DRAW4 and if they had a previously played card's color, your opponent draws 4 instead of you." << std::endl;
+        sleep_for(seconds(5));
+        std::cout << "However, if they don't have a previously played card's color and you challenge the DRAW 4, you will draw 6 cards instead of 4! Tread wisely! " << std::endl;
+        sleep_for(seconds(5));
+        validOption = false;
+        while (validOption == false) {
+            std::cout << "Type S to see points system per card, or P to play: ";
+            std::cin >> familiar;
+            if (familiar == "S" or familiar == "P") {
+                validOption = true;
+            }
+        }
+
+        if (familiar == "S") {
+            std::cout << "Number cards = face values (0-9 points)" << std::endl;
+            std::cout << "SKIP, REVERSE, DRAW 2 cards = 20 points" << std::endl;
+            std::cout << "WILD, DRAW4WILD = 50 points" << std::endl;
+            sleep_for(seconds(5));
+            validOption = false;
+            while (validOption == false) {
+                std::cout << "Type P to play: ";
+                std::cin >> familiar;
+                if (familiar == "P") {
+                    validOption = true;
+                }
+            }
+        }
+    }
+    std::cout << "Make sure your input is in ALL CAPS or else your input will NOT be processed properly! " << std::endl;
+    sleep_for(seconds(5));
+
+    makeWhiteSpace();
     std::string optionChosen = "s";
     bool validChoice = false;
 
