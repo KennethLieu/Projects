@@ -71,7 +71,9 @@
     a) Adds message where after 3rd turn lost for stunned player, that the stun effect has expired
     b) Now if you get hit with +4 while being stunned, if you fail coin flip, you don't get a chance to challenge +4. Instead, you 
     draw 4 automatically as if you didn't take the challenge
- Update ETC TBA v1.1.0
+ 4. Implement abstraction in code to reduce code line usage
+ 5. Upload resulting code to GitHub
+ Update 6/20/23 v1.1.0
   1. *MAJOR UPDATE!* Introduces a new card: the PARDON card! It will has the following features: 
     a) NOT a normal UNO card that you pick up from deck, but everytime you draw a normal UNO card, you have 1/16 chance of picking
     up a PARDON card alongside it. 
@@ -82,6 +84,12 @@
     d) PARDON card will be worth 100 points in the scoring
     e) If you win a round WITHOUT using your PARDON card, you will automatically receive 100 points on top of the value of cards of your
     opponents
+  2. Player/CPUs will no longer be skipped or +2 if those are the starting cards
+  3. Player 1 will be referred to as You
+  4. Coin flip will no longer occur when previous player before stunned player places in second to last card
+  5. You will NO longer be able to challenge +4 when you fail coin flip challenge or don't take coin flip. Instead, you automatically pick up 4 cards
+  6. Upload resulting code to GitHub
+  7. Various bug fixes
  Additional notes:
   1. Despite it being a card you can play, the round ends when you remove all your normal UNO cards (PARDON card does NOT count as a 
   normal card for the purposes of being in your deck)
@@ -93,7 +101,6 @@
   be freed from the effects played on you, or keep it and suffer from the effects
   5. PARDON card CANNOT used to free yourself from the STUN effect. Instead, you MUST take the coin flip to be freed. It can only be 
   used to prevent you from being stunned in the first place. 
-
 */
 
 #include <iostream>
@@ -387,11 +394,14 @@ private:
 };
 
 /* Method to print to screen all valid cards that can be played by position of deck */
-void printPlayableCards(std::vector<Card> a, std::vector<int> b) {
+void printPlayableCards(std::vector<Card> a, std::vector<int> b,int pardon) {
     std::cout << "Playable cards: " << std::endl;
     for (unsigned int i = 0; i < a.size(); i++) {
         std::cout << b[i] << ". ";
         a[i].printCard();
+    }
+    if (pardon == 1) {
+        std::cout << "PARDON CARD " << std::endl;
     }
 }
 
@@ -518,14 +528,14 @@ void coinFlipChallenge(int token, int &suceed, bool &tookChallenge) {
             sleep_for(seconds(5));
             int freed = rand()%2;
             if (freed == 1) {
-                std::cout << "SUCCESS! Player 1 have been freed! Cancelling SKIP effect..." << std::endl;
+                std::cout << "SUCCESS! You have been freed! Cancelling STUN effect..." << std::endl;
                 suceed = 1;
             } else {
-                std::cout << "FAIL! Player 1 failed the coin flip. Player 1 will draw 1 penalty card and remain stunned..." << std::endl;
+                std::cout << "FAIL! You failed the coin flip. You will draw 1 penalty card and remain stunned..." << std::endl;
                 suceed = 0;
             }
         } else {
-            std::cout << "Player 1 didn't take the coin flip. Player 1 will remain stunned..." << std::endl;
+            std::cout << "You didn't take the coin flip. You will remain stunned..." << std::endl;
             tookChallenge = false;
         }
     } else {
@@ -537,7 +547,7 @@ void coinFlipChallenge(int token, int &suceed, bool &tookChallenge) {
         sleep_for(seconds(5));
         int freed = rand()%2;
         if (freed == 1) {
-            std::cout << "SUCCESS! CPU " << token << " have been freed! Cancelling stun effect..." << std::endl;
+            std::cout << "SUCCESS! CPU " << token << " have been freed! Cancelling STUN effect..." << std::endl;
             suceed = 1;
         } else {
             std::cout << "FAIL! CPU " << token  << " failed the coin flip. CPU " << token << " will draw 1 penalty card and remain stunned..." << std::endl;
@@ -554,13 +564,13 @@ void displayEffect(int token, Card start, int &suceed,bool successful = true, in
                 bool tookC = true;
                 coinFlipChallenge(token,suceed,tookC);
                 if (suceed == 0 or tookC == false) {
-                    std::cout << "Player 1: DRAW 4 CARDS!" << std::endl;
+                    std::cout << "You: DRAW 4 CARDS!" << std::endl;
                 }
             } else {
                 if (successful) {
-                    std::cout << "Player 1: DRAW 4 CARDS!" << std::endl;
+                    std::cout << "You: DRAW 4 CARDS!" << std::endl;
                 } else {
-                    std::cout << "Player 1: DRAW 6 CARDS!" << std::endl;
+                    std::cout << "You: DRAW 6 CARDS!" << std::endl;
                 }  
             }
         } else {
@@ -583,7 +593,7 @@ void displayEffect(int token, Card start, int &suceed,bool successful = true, in
     } else if (start.getFaceCard().getFace().compare("LIGHTNING") == 0) {
         std::cout << "LIGHTNING ACTIVATED!" << std::endl;
         if (token == 1) {
-            std::cout << "Player 1: STUNNED!" << std::endl;
+            std::cout << "You: STUNNED!" << std::endl;
         } else {
             std::cout << "CPU " << token << ": STUNNED!" << std::endl;
         }
@@ -593,10 +603,10 @@ void displayEffect(int token, Card start, int &suceed,bool successful = true, in
                 bool tookC = true;
                 coinFlipChallenge(token,suceed,tookC);
                 if (suceed == 0 or tookC == false) {
-                    std::cout << "Player 1: DRAW 2 CARDS!" << std::endl;
+                    std::cout << "You: DRAW 2 CARDS!" << std::endl;
                 }
             } else {
-                std::cout << "Player 1: DRAW 2 CARDS!" << std::endl;
+                std::cout << "You: DRAW 2 CARDS!" << std::endl;
             }
         } else {
             if (lightning == token) {
@@ -616,10 +626,10 @@ void displayEffect(int token, Card start, int &suceed,bool successful = true, in
                 bool tookC = true;
                 coinFlipChallenge(1,suceed,tookC);
                 if (suceed == 0 or tookC == false) {
-                    std::cout << "Player 1: LOST TURN!" << std::endl;
+                    std::cout << "You: LOST TURN!" << std::endl;
                 }
             } else {
-                std::cout << "Player 1: LOST TURN!" << std::endl;
+                std::cout << "You: LOST TURN!" << std::endl;
             }
         } else {
             if (lightning == token) {
@@ -684,9 +694,15 @@ int min(int a, int b, int c) {
 }
 
 //drawing cards when applicable for Player and CPUs
-void drawCards(Player &a, unsigned int amount) {
+void drawCards(Player &a, unsigned int amount, int &pardon) {
     for (unsigned int i = 0; i < amount; i++) {
         a.drawCard();
+        if (pardon == -1) {
+            int randToken = rand()%16;
+            if (randToken == 0) {
+                pardon = a.getToken();
+            }
+        }
     }
 }
 
@@ -730,7 +746,7 @@ void expiredStun(int token, int &lightning, int &turnStunned) {
         turnStunned = 0;
         lightning = 0;
         if (token == 1) {
-            std::cout << "Player 1's stun effect has expired. " << std::endl;
+            std::cout << "Your stun effect has expired. " << std::endl;
         } else {
             std::cout << "CPU " << token << "'s stun effect has expired. " << std::endl;
         }
@@ -738,19 +754,19 @@ void expiredStun(int token, int &lightning, int &turnStunned) {
 }
 
 //Process when a CPU has been challenged by a draw4
-void cpuChallengeDraw4Process(Player &challenger, Player &challenged, Card startingCard, int &turn, int numPlay, Color startColor, int &suceed, int lightning = 0) {
+void cpuChallengeDraw4Process(Player &challenger, Player &challenged, Card startingCard, int &turn, int numPlay, Color startColor, int &suceed, int &pardon, int lightning = 0) {
    std::cout << "CPU " << challenged.getToken() << " awaiting decision: challenge DRAW 4 or not?" << std::endl;
    sleep_for(seconds(5));
    int challenge = challengeDraw4(challenger.getDeck().getNumberOfCards());
    if (challenge == 0) {
         std::cout << "CPU " << challenged.getToken() << " didn't take the challenge." << std::endl;
-        drawCards(challenged,4);
+        drawCards(challenged,4,pardon);
         displayEffect(challenged.getToken(),startingCard,suceed,true,0);
         turn = getTurn(numPlay,challenged.getToken(),challenger.getToken());
    } else {
         if (challenger.getDeck().hasColor(startColor)) {
             std::cout << "CPU " << challenged.getToken() << " took take the challenge and was SUCCESSFUL!" << std::endl;
-            drawCards(challenger,4);
+            drawCards(challenger,4,pardon);
             displayEffect(challenger.getToken(),startingCard,suceed,true,0);
             turn = challenged.getToken();
             if (lightning == challenged.getToken()) {
@@ -758,7 +774,7 @@ void cpuChallengeDraw4Process(Player &challenger, Player &challenged, Card start
             }
         } else {
             std::cout << "CPU " << challenged.getToken() << " took take the challenge and was UNSUCCESSFUL!" << std::endl;
-            drawCards(challenged,6);   
+            drawCards(challenged,6,pardon);   
             displayEffect(challenged.getToken(),startingCard,suceed,false,0);
             turn = getTurn(numPlay,challenged.getToken(),challenger.getToken());
         }
@@ -774,23 +790,23 @@ int getTurnAfterPlayer(int challengerToken, int numPlay) {
 }
 
 //Process when a Player has been challenged by a draw4
-void playerChallengeDraw4Process(Player &challenger, Player &challenged, Card startingCard, int &turn, int numPlay, Color startColor, int &suceed, int lightning = 0) {
+void playerChallengeDraw4Process(Player &challenger, Player &challenged, Card startingCard, int &turn, int numPlay, Color startColor, int &suceed, int &pardon, int lightning = 0) {
     std::string challenging = "x";
     while (challenging != "Y" and challenging != "N") {
         std::cout << "Previous color was " << startColor.getColor() <<", do you think CPU " << challenger.getToken() << " has a " << startColor.getColor() << "? (+0/6 Y, +4 N) (Y/N) ";
         std::cin >> challenging;
     }
     if (challenging.compare("N") == 0) {
-        std::cout << "Player 1 didn't take the challenge." << std::endl;
-        drawCards(challenged,4);
+        std::cout << "You didn't take the challenge." << std::endl;
+        drawCards(challenged,4, pardon);
         displayEffect(challenged.getToken(),startingCard,suceed,true,0);
         turn = getTurnAfterPlayer(challenger.getToken(),numPlay);
     } else {
-        std::cout << "Player 1 took the challenge..." << std::endl;
+        std::cout << "You took the challenge..." << std::endl;
         sleep_for(seconds(3));
         if (challenger.getDeck().hasColor(startColor) == true) {
             std::cout << "and was SUCCESSFUL!" << std::endl;
-            drawCards(challenger,4);
+            drawCards(challenger,4, pardon);
             displayEffect(challenger.getToken(),startingCard, suceed,true,0);
             turn = 1;
             if (lightning == 1) {
@@ -798,7 +814,7 @@ void playerChallengeDraw4Process(Player &challenger, Player &challenged, Card st
             }   
         } else {
             std::cout << "and was UNSUCCESSFUL!" << std::endl;
-            drawCards(challenged,6);
+            drawCards(challenged,6,pardon);
             displayEffect(challenged.getToken(),startingCard,suceed,false,0);
             turn = getTurnAfterPlayer(challenger.getToken(),numPlay);
         }
@@ -806,13 +822,13 @@ void playerChallengeDraw4Process(Player &challenger, Player &challenged, Card st
 }
 
 //Verify UNOs for player and CPUs
-void verifyUNOs(bool shoutUNO1, Player &p1, int &c1) {
+void verifyUNOs(bool shoutUNO1, Player &p1, int &c1, int &pardon) {
     if (shoutUNO1 == true and p1.getDeck().getNumberOfCards() == 1 and c1 == 0) {
-        std::cout << "Player 1: UNO!" << std::endl;
+        std::cout << "You: UNO!" << std::endl;
         c1 = 1;
     } else if (shoutUNO1 == false and p1.getDeck().getNumberOfCards() == 1){
-        std::cout << "Player 1: MISSED UNO SHOUT! DRAW 2 CARDS!" << std::endl;
-        drawCards(p1,2);
+        std::cout << "You: MISSED UNO SHOUT! DRAW 2 CARDS!" << std::endl;
+        drawCards(p1,2,pardon);
     }
     
 }
@@ -871,9 +887,11 @@ int main() {
     std::vector<Card> cards3;
     std::vector<Card> cards4;
     std::vector<int> winnings;
-    std::cout << "Welcome to UNO Classic! Play in an UNO Lightning match where the goal is to be the first player to remove their card. Please make sure all of your inputs are in ALL CAPS or your input will NOT be processed!" << std::endl;
+    std::cout << "Welcome to UNO Lightning! Play in an UNO Lightning match where the goal is to be the first player to remove their card. Please make sure all of your inputs are in ALL CAPS or your input will NOT be processed!" << std::endl;
     std::string optionChosen = "s";
     bool validChoice = false;
+
+    int pardon = -1;
 
     //0 if nobody is stunned, or the respective player's token #
     int lightning = 0;
@@ -936,10 +954,10 @@ int main() {
         std::cout << "Distributing cards.. Please wait!" << std::endl;
         sleep_for(seconds(5));
         //game setup
-        drawCards(p1,7);
-        drawCards(p2,7);
-        drawCards(p3,7);
-        drawCards(p4,7);
+        drawCards(p1,7,pardon);
+        drawCards(p2,7,pardon);
+        drawCards(p3,7,pardon);
+        drawCards(p4,7,pardon);
         int turn = -1;
         if (numPlay == 2) {
             turn = (rand()%2)+1;
@@ -949,39 +967,8 @@ int main() {
         Card startingCard;
         int suceed = -1;
 
-        //starting card is action card, take appropriate actions on first player
-        if (startingCard.getFaceCard().getFace().compare("DRAW2") == 0 or startingCard.getFaceCard().getFace().compare("SKIP") == 0 or startingCard.getFaceCard().getFace().compare("REVERSE") == 0) {
-            if (turn == 1) {
-                displayEffect(p1.getToken(),startingCard,suceed,true,0);
-            } else if (turn == 2) {
-                displayEffect(p2.getToken(),startingCard,suceed,true,0);
-            } else if (turn == 3) {
-                displayEffect(p3.getToken(),startingCard,suceed,true,0);
-            } else {
-                displayEffect(p4.getToken(),startingCard,suceed,true,0);
-            }
-            if (startingCard.getFaceCard().getFace().compare("DRAW2") == 0) {
-                if (turn == 1) {
-                    drawCards(p1,2);
-                } else if (turn == 2) {
-                    drawCards(p2,2);
-                } else if (turn == 3) {
-                    drawCards(p3,2);
-                } else {
-                    drawCards(p4,2);
-                }
-            }
-            if (startingCard.getFaceCard().getFace().compare("DRAW2") == 0 or startingCard.getFaceCard().getFace().compare("SKIP") == 0) {
-                if (turn == 4 or (turn == 2 and numPlay == 2)) {
-                    turn = 1;
-                } else {
-                    turn++;
-                }
-            } else {
-                clockwise = false;
-            }
-        //take appropriate action for wild/draw 4
-        } else if (startingCard.getFaceCard().getFace().compare("WILD") == 0 or startingCard.getFaceCard().getFace().compare("DRAW4WILD") == 0 or startingCard.getFaceCard().getFace().compare("LIGHTNING") == 0) {
+        //take appropriate action for wild/draw 4/lightning
+        if (startingCard.getFaceCard().getFace().compare("WILD") == 0 or startingCard.getFaceCard().getFace().compare("DRAW4WILD") == 0 or startingCard.getFaceCard().getFace().compare("LIGHTNING") == 0) {
             std::cout << "Starting color chosen by random!" << std::endl;
             dec = rand()%4;
             switch(dec) {
@@ -1047,7 +1034,7 @@ int main() {
                             turnStunned = 0;
                             sleep_for(seconds(3));
                         } else {
-                            drawCards(p1,1);
+                            drawCards(p1,1,pardon);
                             if (numPlay == 2 or clockwise == true) {
                                 turn = 2;
                             } else {
@@ -1063,10 +1050,10 @@ int main() {
                 p2 = Player(Deck(sort(p2.getDeck().getCards())),2,pt2,rounds2);
                 p3 = Player(Deck(sort(p3.getDeck().getCards())),3,pt3,rounds3);
                 p4 = Player(Deck(sort(p4.getDeck().getCards())),4,pt4,rounds4);
-                verifyUNOs(shoutedUno1,p1,c1); 
+                verifyUNOs(shoutedUno1,p1,c1,pardon); 
                 playableCards1 = getPlayableCards(p1.getDeck(),startingCard);
                 positions1 = getPlayablePositions(p1.getDeck(),startingCard);
-                std::cout << "Player 1's turn!" << std::endl;
+                std::cout << "Your turn!" << std::endl;
                 p1.revealHand();
                 if (p1.getDeck().getNumberOfCards() >= 2) {
                     shoutedUno1 = false;
@@ -1082,7 +1069,7 @@ int main() {
 
                 //checks if player 1 has a playable card
                 if (p1.getDeck().hasPlayableCard(startingCard) == true) {
-                    printPlayableCards(playableCards1,positions1);
+                    printPlayableCards(playableCards1,positions1,pardon);
                     if (p1.getDeck().getNumberOfCards() == 2) {
                         std::cout << "Tip: Now would be a good time to shout UNO." << std::endl;
                     }
@@ -1146,81 +1133,83 @@ int main() {
                                         if (numPlay == 4) {
                                             if (clockwise == true) {
                                                 if (p1.getDeck().getNumberOfCards() == 1) {
-                                                    drawCards(p2,4);
+                                                    drawCards(p2,4,pardon);
                                                     displayEffect(p2.getToken(),startingCard,suceed,true,0);
                                                 } else {
                                                     if (lightning == 2) {
                                                         displayEffect(p2.getToken(),startingCard,suceed,true,lightning);
                                                         if (suceed == 0) {
-                                                            drawCards(p2,1);
-                                                            displayEffect(p2.getToken(),startingCard,suceed,true,0);
-                                                            drawCards(p2,4);
-                                                            turnStunned++;
-                                                            if (turnStunned == 3) {
-                                                                turnStunned = 0;
-                                                                lightning = 0;
-                                                                std::cout << "CPU 2's stun effect has expired. " << std::endl;
-                                                            }
+                                                            drawCards(p2,1,pardon);
+                                                            drawCards(p2,4,pardon);
+                                                            expiredStun(2,lightning,turnStunned);
+                                                            turn = 3;
                                                         } else {
                                                             turn = 2;
                                                             lightning = 0;
                                                             turnStunned = 0;
                                                         }
                                                     } else {
-                                                        cpuChallengeDraw4Process(p1,p2,startingCard,turn,numPlay,startColor,suceed,lightning);
+                                                        if (pardon == 2) {
+                                                            std::cout << "CPU 2 decided to use PARDON card. CPU 2 is IMMUNE to the DRAW 4 effect for this turn!" << std::endl;
+                                                            turn = 2;
+                                                            pardon = -1;
+                                                        } else {
+                                                            cpuChallengeDraw4Process(p1,p2,startingCard,turn,numPlay,startColor,suceed,lightning);
+                                                        }
                                                     }
                                                 }
                                             } else {
                                                 if (p1.getDeck().getNumberOfCards() == 1) {
-                                                    drawCards(p4,4);
+                                                    drawCards(p4,4,pardon);
                                                     displayEffect(p4.getToken(),startingCard,suceed,true,0);
                                                 } else {
                                                     if (lightning == 4) {
                                                         displayEffect(p4.getToken(),startingCard,suceed,true,lightning);
                                                         if (suceed == 0) {
-                                                            drawCards(p4,1);
-                                                            displayEffect(p4.getToken(),startingCard,suceed,true,lightning);
-                                                            drawCards(p4,4);
-                                                            turnStunned++;
-                                                            if (turnStunned == 3) {
-                                                                turnStunned = 0;
-                                                                lightning = 0;
-                                                                std::cout << "CPU 4's stun effect has expired. " << std::endl;
-                                                            }
+                                                            drawCards(p4,1,pardon);
+                                                            drawCards(p4,4,pardon);
+                                                            expiredStun(4,lightning,turnStunned);
+                                                            turn = 3;
                                                         } else {
                                                             turn = 4;
                                                             lightning = 0;
                                                             turnStunned = 0;
                                                         }       
                                                     } else {
-                                                        cpuChallengeDraw4Process(p1,p4,startingCard,turn,numPlay,startColor,suceed,lightning);
+                                                        if (pardon == 4) {
+                                                            std::cout << "CPU 4 decided to use PARDON card. CPU 4 is IMMUNE to the DRAW 4 effect for this turn!" << std::endl;
+                                                            turn = 4;
+                                                            pardon = -1;
+                                                        } else {
+                                                            cpuChallengeDraw4Process(p1,p4,startingCard,turn,numPlay,startColor,suceed,lightning);
+                                                        }
                                                     }
                                                 }
                                             }
                                         } else {
                                             if (p1.getDeck().getNumberOfCards() == 1) {
-                                                drawCards(p2,4);
+                                                drawCards(p2,4,pardon);
                                                 displayEffect(p2.getToken(),startingCard,suceed,true,0);
                                             } else {
                                                 if (lightning == 2) {
                                                     displayEffect(p2.getToken(),startingCard,suceed,true,lightning);
                                                     if (suceed == 0) {
-                                                        drawCards(p2,1);
-                                                        displayEffect(p2.getToken(),startingCard,suceed,true,0);
-                                                        drawCards(p2,4);
-                                                        turnStunned++;
-                                                        if (turnStunned == 3) {
-                                                            turnStunned = 0;
-                                                            lightning = 0;
-                                                            std::cout << "CPU 2's stun effect has expired. " << std::endl;
-                                                        }
+                                                        drawCards(p2,1,pardon);
+                                                        drawCards(p2,4,pardon);
+                                                        expiredStun(2,lightning,turnStunned);
                                                     } else {
                                                         turn = 2;
                                                         lightning = 0;
                                                         turnStunned = 0;
                                                     }
                                                 } else {
-                                                    cpuChallengeDraw4Process(p1,p2,startingCard,turn,numPlay,startColor,suceed);
+                                                    if (pardon == 2) {
+                                                        std::cout << "CPU 2 decided to use PARDON card. CPU 2 is IMMUNE to the DRAW 4 effect for this turn!" << std::endl;
+                                                        turn = 2;
+                                                        pardon = -1;
+                                                    } else {
+                                                        cpuChallengeDraw4Process(p1,p2,startingCard,turn,numPlay,startColor,suceed,lightning);
+                                                    }
                                                 }
                                             }
                                         }
@@ -1228,7 +1217,7 @@ int main() {
                                         startingCard.changeFaceCard(Face("WILD"));
                                         actioned = true;
                                         if (clockwise == true or numPlay == 2) {
-                                            if (lightning == 2) {
+                                            if (lightning == 2 and p1.getDeck().getNumberOfCards() != 1) {
                                                 bool tookC = true;
                                                 coinFlipChallenge(2,suceed,tookC);
                                                 if (suceed == 1) {
@@ -1236,7 +1225,7 @@ int main() {
                                                     turnStunned = 0;
                                                     turn = 2;
                                                 } else {
-                                                    drawCards(p2,1);
+                                                    drawCards(p2,1,pardon);
                                                     if (numPlay == 4) {
                                                         turn = 3;
                                                     }
@@ -1247,7 +1236,7 @@ int main() {
                                                 turn = 2;
                                             }
                                         } else {
-                                            if (lightning == 4) {
+                                            if (lightning == 4 and p1.getDeck().getNumberOfCards() != 1) {
                                                 bool tookC = true;
                                                 coinFlipChallenge(4,suceed,tookC);
                                                 if (suceed == 1) {
@@ -1255,7 +1244,7 @@ int main() {
                                                     turnStunned = 0;
                                                     turn = 2;
                                                 } else {
-                                                    drawCards(p4,1);
+                                                    drawCards(p4,1,pardon);
                                                     turn = 3;
                                                     expiredStun(4,lightning,turnStunned);
                                                 }
@@ -1268,17 +1257,30 @@ int main() {
                                         startingCard.changeFaceCard(Face("LIGHTNING"));
                                         if (lightning == 0 and p1.getDeck().getNumberOfCards() != 1) {
                                             if (clockwise == true or numPlay == 2) {
-                                                lightning = 2;
-                                                displayEffect(p2.getToken(),startingCard,suceed);
-                                                if (numPlay == 4) {
-                                                    turn = 3;
+                                                if (pardon == 2) {
+                                                    std::cout << "CPU 2 decided to use PARDON card. CPU 2 is IMMUNE to the STUN effect for this turn!" << std::endl;
+                                                    turn = 2;
+                                                    pardon = -1;
+                                                } else {
+                                                    lightning = 2;
+                                                    displayEffect(p2.getToken(),startingCard,suceed);
+                                                    if (numPlay == 4) {
+                                                        turn = 3;
+                                                    }
+                                                    turnStunned = 1;
                                                 }
                                             } else {
-                                                lightning = 4;
-                                                displayEffect(p4.getToken(),startingCard,suceed);
-                                                turn = 3;
+                                                if (pardon == 4) {
+                                                    std::cout << "CPU 4 decided to use PARDON card. CPU 4 is IMMUNE to the STUN effect for this turn!" << std::endl;
+                                                    turn = 4;
+                                                    pardon = -1;
+                                                } else {
+                                                    lightning = 4;
+                                                    displayEffect(p4.getToken(),startingCard,suceed);
+                                                    turn = 3;
+                                                    turnStunned = 1;
+                                                }
                                             }
-                                            turnStunned = 1;
                                         } else {
                                             if (p1.getDeck().getNumberOfCards() == 1) {
                                                 std::cout << "Last card of the game! Now treated as standard WILD card. " << std::endl;
@@ -1293,7 +1295,7 @@ int main() {
                                                             turnStunned = 0;
                                                             turn = 2;
                                                         } else {
-                                                            drawCards(p2,1);
+                                                            drawCards(p2,1,pardon);
                                                             if (numPlay == 4) {
                                                                 turn = 3;
                                                             }
@@ -1312,7 +1314,7 @@ int main() {
                                                             turnStunned = 0;
                                                             turn = 2;
                                                         } else {
-                                                            drawCards(p4,1);
+                                                            drawCards(p4,1,pardon);
                                                             turn = 3;
                                                             expiredStun(4,lightning,turnStunned);
                                                         }
@@ -1333,13 +1335,29 @@ int main() {
                                             if (p1.getDeck().getNumberOfCards() == 1) {
                                                 displayEffect(p2.getToken(),startingCard,suceed,true,0);
                                             } else {
-                                                displayEffect(p2.getToken(),startingCard,suceed,true,lightning);
+                                                if (lightning != 2 and p1.getDeck().getCardAtPos(p1.getDeck().getNumberOfCards()-1).getFaceCard().getFace().compare("REVERSE") != 0) {
+                                                    if (pardon == 2) {
+                                                        turn = 2;
+                                                    } else {
+                                                        displayEffect(p2.getToken(),startingCard,suceed,true,lightning);
+                                                    }
+                                                } else {
+                                                    displayEffect(p2.getToken(),startingCard,suceed,true,lightning);
+                                                }
                                             }
                                         } else {
                                             if (p1.getDeck().getNumberOfCards() == 1) {
                                                 displayEffect(p4.getToken(),startingCard,suceed,true,0);
                                             } else {
-                                                displayEffect(p4.getToken(),startingCard,suceed,true,lightning);
+                                                if (lightning != 4 and p1.getDeck().getCardAtPos(p1.getDeck().getNumberOfCards()-1).getFaceCard().getFace().compare("REVERSE") != 0) {
+                                                    if (pardon == 4) {
+                                                        turn = 4;
+                                                    } else {
+                                                        displayEffect(p4.getToken(),startingCard,suceed,true,lightning);
+                                                    }
+                                                } else {
+                                                    displayEffect(p4.getToken(),startingCard,suceed,true,lightning);
+                                                }
                                             }
                                         }
                                         turn = 3;
@@ -1347,7 +1365,15 @@ int main() {
                                         if (p1.getDeck().getNumberOfCards() == 1) {
                                             displayEffect(p2.getToken(),startingCard,suceed,true,0);
                                         } else {
-                                            displayEffect(p2.getToken(),startingCard,suceed,true,lightning);
+                                            if (lightning != 2 and p1.getDeck().getCardAtPos(p1.getDeck().getNumberOfCards()-1).getFaceCard().getFace().compare("REVERSE") != 0) {
+                                                if (pardon == 2) {
+                                                    turn = 2;
+                                                } else {
+                                                    displayEffect(p2.getToken(),startingCard,suceed,true,lightning);
+                                                }
+                                            } else {
+                                                displayEffect(p2.getToken(),startingCard,suceed,true,lightning);
+                                            }
                                         }
                                     }
                                     if (startingCard.getFaceCard().getFace().compare("DRAW2") == 0) {
@@ -1358,12 +1384,18 @@ int main() {
                                                     lightning = 0;
                                                     turnStunned = 0;
                                                 } else if (suceed == 0) {
-                                                    drawCards(p2,3);
+                                                    drawCards(p2,3,pardon);
                                                     turn = 3;
                                                     expiredStun(2,lightning,turnStunned);
                                                 } else {
-                                                    drawCards(p2,2);
-                                                    turn = 3;
+                                                    if (pardon == 2) {
+                                                        turn = 2;
+                                                        std::cout << "CPU 2 decided to use PARDON card. CPU 2 is IMMUNE to the DRAW 2 effect for this turn!" << std::endl;
+                                                        pardon = -1;
+                                                    } else {
+                                                        drawCards(p2,2,pardon);
+                                                        turn = 3;
+                                                    }
                                                 }
                                             } else {
                                                 if (suceed == 1) {
@@ -1371,12 +1403,18 @@ int main() {
                                                     lightning = 0;
                                                     turnStunned = 0;
                                                 } else if (suceed == 0) {
-                                                    drawCards(p4,3);
+                                                    drawCards(p4,3,pardon);
                                                     turn = 3;
                                                     expiredStun(4,lightning,turnStunned);
                                                 } else {
-                                                    drawCards(p4,2);
-                                                    turn = 3;
+                                                    if (pardon == 4) {
+                                                        std::cout << "CPU 4 decided to use PARDON card. CPU 4 is IMMUNE to the DRAW 2 effect for this turn!" << std::endl;
+                                                        turn = 4;
+                                                        pardon = -1;
+                                                    } else {
+                                                        drawCards(p4,2,pardon);
+                                                        turn = 3;
+                                                    }
                                                 }
                                             }
                                         } else {
@@ -1385,10 +1423,16 @@ int main() {
                                                 lightning = 0;
                                                 turnStunned = 0;
                                             } else if (suceed == 0) {
-                                                drawCards(p2,3);
+                                                drawCards(p2,3,pardon);
                                                 expiredStun(2,lightning,turnStunned);
                                             } else {
-                                                drawCards(p2,2);
+                                                if (pardon == 2) {
+                                                    turn = 2;
+                                                    std::cout << "CPU 2 decided to use PARDON card. CPU 2 is IMMUNE to the DRAW 2 effect for this turn!" << std::endl;
+                                                    pardon = -1;
+                                                } else {
+                                                    drawCards(p2,2,pardon);
+                                                }
                                             }
                                         }
                                     } else if (startingCard.getFaceCard().getFace().compare("REVERSE") == 0) {
@@ -1414,13 +1458,23 @@ int main() {
                                                 turn = 3;
                                                 if (clockwise) {
                                                     expiredStun(2,lightning,turnStunned);
-                                                    drawCards(p2,1);
+                                                    drawCards(p2,1,pardon);
                                                 } else {
                                                     expiredStun(4,lightning,turnStunned);
-                                                    drawCards(p4,1);
+                                                    drawCards(p4,1,pardon);
                                                 }
                                             } else {
-                                                turn = 3;
+                                                if (pardon == 2 and clockwise) {
+                                                    std::cout << "CPU 2 decided to use PARDON card. CPU 2 is IMMUNE to the SKIP effect for this turn!" << std::endl;
+                                                    turn = 2;
+                                                    pardon = -1;
+                                                } else if (pardon == 4 and !clockwise){
+                                                    std::cout << "CPU 4 decided to use PARDON card. CPU 4 is IMMUNE to the SKIP effect for this turn!" << std::endl;
+                                                    turn = 4;
+                                                    pardon = -1;
+                                                } else {
+                                                    turn = 3;
+                                                }
                                             }
                                         } else {
                                             if (suceed == 1) {
@@ -1428,8 +1482,13 @@ int main() {
                                                 lightning = 0;
                                                 turnStunned = 0;
                                             } else if (suceed == 0) {
-                                                drawCards(p2,1);
+                                                drawCards(p2,1,pardon);
                                                 expiredStun(2,lightning,turnStunned);
+                                            } else {
+                                                if (pardon == 2) {
+                                                    std::cout << "CPU 2 decided to use PARDON card. CPU 2 is IMMUNE to the SKIP effect for this turn!" << std::endl;
+                                                    turn = 2;
+                                                }
                                             }
                                         }
                                     }
@@ -1439,7 +1498,7 @@ int main() {
                                     startingCard.changeFaceCard(p1.getDeck().getCardAtPos(p1.getDeck().getNumberOfCards()-1).getFaceCard());
                                     actioned = true;
                                     if (numPlay == 2 or clockwise == true) {
-                                        if (lightning == 2) {
+                                        if (lightning == 2 and p1.getDeck().getNumberOfCards() != 1) {
                                             bool tookC = true;
                                             coinFlipChallenge(2,suceed,tookC);
                                             if (suceed == 1) {
@@ -1447,7 +1506,7 @@ int main() {
                                                 lightning = 0;
                                                 turnStunned = 0;
                                             } else {
-                                                drawCards(p2,1);
+                                                drawCards(p2,1,pardon);
                                                 if (numPlay == 4) {
                                                     turn = 3;
                                                 }
@@ -1458,7 +1517,7 @@ int main() {
                                             turn = 2;
                                         }
                                     } else {
-                                        if (lightning == 4) {
+                                        if (lightning == 4 and p1.getDeck().getNumberOfCards() != 1) {
                                             bool tookC = true;
                                             coinFlipChallenge(4,suceed,tookC);
                                             if (suceed == 1) {
@@ -1466,7 +1525,7 @@ int main() {
                                                 lightning = 0;
                                                 turnStunned = 0;
                                             } else {
-                                                drawCards(p4,1);
+                                                drawCards(p4,1,pardon);
                                                 turn = 3;
                                                 expiredStun(4,lightning,turnStunned);
                                             }
@@ -1489,7 +1548,7 @@ int main() {
                                             lightning = 0;
                                             turnStunned = 0;
                                         } else {
-                                            drawCards(p2,1);
+                                            drawCards(p2,1,pardon);
                                             if (numPlay == 4) {
                                                 turn = 3;
                                             }
@@ -1508,7 +1567,7 @@ int main() {
                                             lightning = 0;
                                             turnStunned = 0;
                                         } else {
-                                            drawCards(p4,1);
+                                            drawCards(p4,1,pardon);
                                             turn = 3;
                                             expiredStun(4,lightning,turnStunned);
                                         }
@@ -1531,7 +1590,7 @@ int main() {
                                         lightning = 0;
                                         turnStunned = 0;
                                     } else {
-                                        drawCards(p2,1);
+                                        drawCards(p2,1,pardon);
                                         if (numPlay == 4) {
                                             turn = 3;
                                         }
@@ -1551,7 +1610,7 @@ int main() {
                                         lightning = 0;
                                         turnStunned = 0;
                                     } else {
-                                        drawCards(p4,1);
+                                        drawCards(p4,1,pardon);
                                         turn = 3;
                                         expiredStun(4,lightning,turnStunned);
                                     }
@@ -1589,58 +1648,69 @@ int main() {
                                 if (numPlay == 4) {
                                     if (clockwise == true) {
                                         if (p1.getDeck().getNumberOfCards() == 1) {
-                                            drawCards(p2,4);
+                                            drawCards(p2,4,pardon);
                                             displayEffect(p2.getToken(),startingCard,suceed, true, 0);
                                         } else {
                                             if (lightning == 2) {
                                                 displayEffect(p2.getToken(),startingCard,suceed,true,lightning);
                                                 if (suceed == 0) {
-                                                    drawCards(p2,1);
-                                                    displayEffect(p2.getToken(),startingCard,suceed, true, 0);
-                                                    drawCards(p2,4);
-                                                    expiredStun(2,lightning,turnStunned);                                                    
+                                                    drawCards(p2,1,pardon);
+                                                    drawCards(p2,4,pardon);
+                                                    expiredStun(2,lightning,turnStunned);
+                                                    turn = 3;                                                    
                                                 } else {
                                                     turn = 2;
                                                     lightning = 0;
                                                     turnStunned = 0;
                                                 }
                                             } else {
-                                                cpuChallengeDraw4Process(p1,p2,startingCard,turn,numPlay,startColor,suceed);
+                                                if (pardon == 2) {
+                                                    std::cout << "CPU 2 decided to use PARDON card. CPU 2 is IMMUNE to the DRAW 4 effect for this turn!" << std::endl;
+                                                    turn = 2;
+                                                    pardon = -1;
+                                                } else {
+                                                    cpuChallengeDraw4Process(p1,p2,startingCard,turn,numPlay,startColor,suceed,lightning);
+                                                }
                                             }
                                         }
                                     } else {
                                         if (p1.getDeck().getNumberOfCards() == 1) {
-                                            drawCards(p4,4);
+                                            drawCards(p4,4,pardon);
                                             displayEffect(p4.getToken(),startingCard,suceed);
                                         } else {
                                             if (lightning == 4) {
                                                 displayEffect(p4.getToken(),startingCard,suceed,true,lightning);
                                                 if (suceed == 0) {
-                                                    drawCards(p4,1);
-                                                    displayEffect(p4.getToken(),startingCard,suceed, true, 0);
-                                                    drawCards(p4,4);  
+                                                    drawCards(p4,1,pardon);
+                                                    drawCards(p4,4,pardon);  
                                                     expiredStun(4,lightning,turnStunned);
+                                                    turn = 3;
                                                 } else {
                                                     turn = 4;
                                                     lightning = 0;
                                                     turnStunned = 0;
                                                 }
                                             } else {
-                                                cpuChallengeDraw4Process(p1,p4,startingCard,turn,numPlay,startColor,suceed);
+                                                if (pardon == 4) {
+                                                    std::cout << "CPU 4 decided to use PARDON card. CPU 4 is IMMUNE to the DRAW 4 effect for this turn!" << std::endl;
+                                                    turn = 4;
+                                                    pardon = -1;
+                                                } else {
+                                                    cpuChallengeDraw4Process(p1,p4,startingCard,turn,numPlay,startColor,suceed,lightning);
+                                                }
                                             }
                                         }   
                                     }
                                 } else {
                                     if (p1.getDeck().getNumberOfCards() == 1) {
-                                        drawCards(p2,4);
+                                        drawCards(p2,4,pardon);
                                         displayEffect(p2.getToken(),startingCard,suceed);
                                     } else {
                                         if (lightning == 2) {
                                             displayEffect(p2.getToken(),startingCard,suceed,true,lightning);
                                             if (suceed == 0) {
-                                                drawCards(p2,1);
-                                                displayEffect(p2.getToken(),startingCard,suceed, true, 0);
-                                                drawCards(p2,4);  
+                                                drawCards(p2,1,pardon);
+                                                drawCards(p2,4,pardon);  
                                                 expiredStun(2,lightning,turnStunned);
                                             } else {
                                                 turn = 2;
@@ -1648,7 +1718,13 @@ int main() {
                                                 turnStunned = 0;
                                             }
                                         } else {
-                                            cpuChallengeDraw4Process(p1,p2,startingCard,turn,numPlay,startColor,suceed);
+                                            if (pardon == 2) {
+                                                std::cout << "CPU 2 decided to use PARDON card. CPU 2 is IMMUNE to the DRAW 4 effect for this turn!" << std::endl;
+                                                turn = 2;
+                                                pardon = -1;
+                                            } else {
+                                                cpuChallengeDraw4Process(p1,p2,startingCard,turn,numPlay,startColor,suceed,lightning);
+                                            }
                                         }
                                     }  
                                 }
@@ -1656,7 +1732,7 @@ int main() {
                                 startingCard.changeFaceCard(Face("WILD"));
                                 actioned = true;
                                 if (clockwise == true or numPlay == 2) {
-                                    if (lightning == 2) {
+                                    if (lightning == 2 and p1.getDeck().getNumberOfCards() != 1) {
                                         bool tookC = true;
                                         coinFlipChallenge(2,suceed,tookC);
                                         if (suceed == 1) {
@@ -1664,7 +1740,7 @@ int main() {
                                             lightning = 0;
                                             turnStunned = 0;
                                         } else if (suceed == 0) {
-                                            drawCards(p2,1);
+                                            drawCards(p2,1,pardon);
                                             if (numPlay == 4) {
                                                 turn = 3;
                                             }
@@ -1675,7 +1751,7 @@ int main() {
                                         turn = 2;
                                     }
                                 } else {
-                                    if (lightning == 4) {
+                                    if (lightning == 4 and p1.getDeck().getNumberOfCards() != 1) {
                                         bool tookC = true;
                                         coinFlipChallenge(4,suceed,tookC);
                                         if (suceed == 1) {
@@ -1683,7 +1759,7 @@ int main() {
                                             lightning = 0;
                                             turnStunned = 0;
                                         } else if (suceed == 0) {
-                                            drawCards(p4,1);
+                                            drawCards(p4,1,pardon);
                                             turn = 3;
                                             expiredStun(2,lightning,turnStunned);
                                         }
@@ -1696,17 +1772,32 @@ int main() {
                                 startingCard.changeFaceCard(Face("LIGHTNING"));
                                 if (lightning == 0 and p1.getDeck().getNumberOfCards() != 1) {
                                     if (clockwise == true or numPlay == 2) {
-                                        lightning = 2;
-                                        displayEffect(p2.getToken(),startingCard,suceed);
-                                        if (numPlay == 4) {
-                                            turn = 3;
+                                        if (pardon == 2) {
+                                            std::cout << "CPU 2 decided to use PARDON card. CPU 2 is IMMUNE to the STUN effect for this turn!" << std::endl;
+                                            turn = 2;
+                                            pardon = -1;
+                                        } else {
+                                            lightning = 2;
+                                            displayEffect(p2.getToken(),startingCard,suceed);
+                                            if (numPlay == 4) {
+                                                turn = 3;
+                                            }
+                                            turnStunned = 1;
                                         }
                                     } else {
-                                        lightning = 4;
-                                        displayEffect(p4.getToken(),startingCard,suceed);
-                                        turn = 3;
+                                        if (pardon == 4) {
+                                            std::cout << "CPU 4 decided to use PARDON card. CPU 4 is IMMUNE to the STUN effect for this turn!" << std::endl;
+                                            turn = 4;
+                                            pardon = -1;
+                                        } else {
+                                            lightning = 4;
+                                            displayEffect(p4.getToken(),startingCard,suceed);
+                                            if (numPlay == 4) {
+                                                turn = 3;
+                                            }
+                                            turnStunned = 1;
+                                        }
                                     }
-                                    turnStunned = 1;
                                 } else {
                                     if (p1.getDeck().getNumberOfCards() == 1) {
                                         std::cout << "Last card of the game! Now treated as standard WILD card. " << std::endl;
@@ -1721,12 +1812,12 @@ int main() {
                                                     lightning = 0;
                                                     turnStunned = 0;
                                                 } else if (suceed == 0) {
-                                                    drawCards(p2,1);
+                                                    drawCards(p2,1,pardon);
                                                     if (numPlay == 4) {
                                                         turn = 3;
                                                     }
                                                     expiredStun(2,lightning,turnStunned);
-                                                }
+                                                } 
                                                 sleep_for(seconds(3));
                                             } else {
                                                 turn = 2;
@@ -1740,7 +1831,7 @@ int main() {
                                                     lightning = 0;
                                                     turnStunned = 0;
                                                 } else if (suceed == 0) {
-                                                    drawCards(p4,1);
+                                                    drawCards(p4,1,pardon);
                                                     turn = 3;
                                                     expiredStun(2,lightning,turnStunned);
                                                 }
@@ -1762,24 +1853,46 @@ int main() {
                                     if (p1.getDeck().getNumberOfCards() == 1) {
                                         displayEffect(p2.getToken(),startingCard,suceed,true,0);
                                     } else {
-                                        displayEffect(p2.getToken(),startingCard,suceed,true,lightning);
+                                        if (lightning != 2 and p1.getDeck().getCardAtPos(p1.getDeck().getNumberOfCards()-1).getFaceCard().getFace().compare("REVERSE") != 0) {
+                                            if (pardon == 2) {
+                                                turn = 2;
+                                            } else {
+                                                displayEffect(p2.getToken(),startingCard,suceed,true,lightning);
+                                            }
+                                        } else {
+                                            displayEffect(p2.getToken(),startingCard,suceed,true,lightning);
+                                        }
                                     }
                                 } else {
                                     if (p1.getDeck().getNumberOfCards() == 1) {
                                         displayEffect(p4.getToken(),startingCard,suceed,true,0);
                                     } else {
-                                        displayEffect(p4.getToken(),startingCard,suceed,true,lightning);
+                                        if (lightning != 4 and p1.getDeck().getCardAtPos(pos1-1).getFaceCard().getFace().compare("REVERSE") != 0) {
+                                            if (pardon == 4) {
+                                                turn = 4;
+                                            } else {
+                                                displayEffect(p4.getToken(),startingCard,suceed,true,lightning);
+                                            }
+                                        } else {
+                                            displayEffect(p4.getToken(),startingCard,suceed,true,lightning);
+                                        }
                                     }
                                 }
                                 turn = 3;
                             } else {
-                                displayEffect(p2.getToken(),startingCard,suceed);
+                                if (lightning != 2 and p1.getDeck().getCardAtPos(pos1-1).getFaceCard().getFace().compare("REVERSE") != 0) {
+                                    if (pardon == 2) {
+                                        turn = 2;
+                                    }
+                                } else {
+                                    displayEffect(p2.getToken(),startingCard,suceed,true,lightning);
+                                }
                             }
                             if (startingCard.getFaceCard().getFace().compare("DRAW2") == 0) {
                                 if (numPlay == 4) {
                                     if (clockwise == true) {
                                         if (suceed == 0) {
-                                            drawCards(p2,3);
+                                            drawCards(p2,3,pardon);
                                             turn = 3;
                                             expiredStun(2,lightning,turnStunned);
                                         } else if (suceed == 1) {
@@ -1787,12 +1900,18 @@ int main() {
                                             lightning = 0;
                                             turnStunned = 0;
                                         } else {
-                                            turn = 3;
-                                            drawCards(p2,2);
+                                            if (pardon == 2) {
+                                                turn = 2;
+                                                std::cout << "CPU 2 decided to use PARDON card. CPU 2 is IMMUNE to the DRAW 2 effect for this turn!" << std::endl;
+                                                pardon = -1;
+                                            } else {
+                                                drawCards(p2,2,pardon);
+                                                turn = 3;
+                                            }
                                         }
                                     } else {
                                         if (suceed == 0) {
-                                            drawCards(p4,3);
+                                            drawCards(p4,3,pardon);
                                             turn = 3;
                                             expiredStun(4,lightning,turnStunned);
                                         } else if (suceed == 1) {
@@ -1800,20 +1919,32 @@ int main() {
                                             lightning = 0;
                                             turnStunned = 0;
                                         } else {
-                                            turn = 3;
-                                            drawCards(p4,2);
+                                            if (pardon == 4) {
+                                                turn = 4;
+                                                std::cout << "CPU 4 decided to use PARDON card. CPU 4 is IMMUNE to the DRAW 2 effect for this turn!" << std::endl;
+                                                pardon = -1;
+                                            } else {
+                                                drawCards(p4,2,pardon);
+                                                turn = 3;
+                                            }
                                         }
                                     }
                                 } else {
                                     if (suceed == 0) {
-                                        drawCards(p2,3);
+                                        drawCards(p2,3,pardon);
                                         expiredStun(2,lightning,turnStunned);
                                     } else if (suceed == 1) {
                                         turn = 2;
                                         lightning = 0;
                                         turnStunned = 0;
                                     } else {
-                                        drawCards(p2,2);
+                                        if (pardon == 2) {
+                                            turn = 2;
+                                            std::cout << "CPU 2 decided to use PARDON card. CPU 2 is IMMUNE to the DRAW 2 effect for this turn!" << std::endl;
+                                            pardon = -1;
+                                        } else {
+                                            drawCards(p2,2,pardon);
+                                        }
                                     }
                                 }
                             } else if (startingCard.getFaceCard().getFace().compare("REVERSE") == 0) {
@@ -1839,13 +1970,23 @@ int main() {
                                         turn = 3;
                                         if (clockwise) {
                                             expiredStun(2,lightning,turnStunned);
-                                            drawCards(p2,1);
+                                            drawCards(p2,1,pardon);
                                         } else {
                                             expiredStun(4,lightning,turnStunned);
-                                            drawCards(p4,1);
+                                            drawCards(p4,1,pardon);
                                         }
                                     } else {
-                                        turn = 3;
+                                        if (pardon == 2 and clockwise) {
+                                            std::cout << "CPU 2 decided to use PARDON card. CPU 2 is IMMUNE to the SKIP effect for this turn!" << std::endl;
+                                            turn = 2;
+                                            pardon = -1;
+                                        } else if (pardon == 4 and !clockwise){
+                                            std::cout << "CPU 4 decided to use PARDON card. CPU 4 is IMMUNE to the SKIP effect for this turn!" << std::endl;
+                                            turn = 4;
+                                            pardon = -1;
+                                        } else {
+                                            turn = 3;
+                                        }
                                     }
                                 } else {
                                     if (suceed == 1) {
@@ -1853,8 +1994,13 @@ int main() {
                                         lightning = 0;
                                         turnStunned = 0;
                                     } else if (suceed == 0) {
-                                        drawCards(p2,1);
+                                        drawCards(p2,1,pardon);
                                         expiredStun(2,lightning,turnStunned);
+                                    } else {
+                                        if (pardon == 2) {
+                                            std::cout << "CPU 2 decided to use PARDON card. CPU 2 is IMMUNE to the SKIP effect for this turn!" << std::endl;
+                                            turn = 2;
+                                        }
                                     }
                                 }
                             }
@@ -1862,7 +2008,7 @@ int main() {
                         } else {
                             actioned = true;
                             if (numPlay == 2 or clockwise == true) {
-                                if (lightning == 2) {
+                                if (lightning == 2 and p1.getDeck().getNumberOfCards() != 1) {
                                     bool tookC = true;
                                     coinFlipChallenge(2,suceed,tookC);
                                     if (suceed == 1) {
@@ -1870,7 +2016,7 @@ int main() {
                                         lightning = 0;
                                         turnStunned = 0;
                                     } else {
-                                        drawCards(p2,1);
+                                        drawCards(p2,1,pardon);
                                         if (numPlay == 4) {
                                             turn = 3;
                                         }
@@ -1881,7 +2027,7 @@ int main() {
                                     turn = 2;
                                 }
                             } else {
-                                if (lightning == 4) {
+                                if (lightning == 4 and p1.getDeck().getNumberOfCards() != 1) {
                                     bool tookC = true;
                                     coinFlipChallenge(4,suceed,tookC);
                                     if (suceed == 1) {
@@ -1889,7 +2035,7 @@ int main() {
                                         lightning = 0;
                                         turnStunned = 0;
                                     } else {
-                                        drawCards(p4,1);
+                                        drawCards(p4,1,pardon);
                                         turn = 3;
                                         expiredStun(4,lightning,turnStunned);
                                     }
@@ -1947,58 +2093,69 @@ int main() {
                                     if (numPlay == 4) {
                                         if (clockwise == true) {
                                             if (p1.getDeck().getNumberOfCards() == 1) {
-                                                drawCards(p2,4);
+                                                drawCards(p2,4,pardon);
                                                 displayEffect(p2.getToken(),startingCard,suceed);
                                             } else {
                                                 if (lightning == 2) {
                                                     displayEffect(p2.getToken(),startingCard,suceed,true,lightning);
                                                     if (suceed == 0) {
-                                                        drawCards(p2,1);
-                                                        displayEffect(p2.getToken(),startingCard,suceed);
-                                                        drawCards(p2,4);
+                                                        drawCards(p2,1,pardon);
+                                                        drawCards(p2,4,pardon);
                                                         expiredStun(2,lightning,turnStunned);
+                                                        turn = 3;
                                                     } else {
                                                         turn = 2;
                                                         lightning = 0;
                                                         turnStunned = 0;
                                                     }
                                                 } else {
-                                                    cpuChallengeDraw4Process(p1,p2,startingCard,turn,numPlay,startColor,suceed);
+                                                    if (pardon == 2) {
+                                                        std::cout << "CPU 2 decided to use PARDON card. CPU 2 is IMMUNE to the DRAW 4 effect for this turn!" << std::endl;
+                                                        turn = 2;
+                                                        pardon = -1;
+                                                    } else {
+                                                        cpuChallengeDraw4Process(p1,p2,startingCard,turn,numPlay,startColor,suceed,lightning);
+                                                    }
                                                 }
                                             }
                                         } else {
                                             if (p1.getDeck().getNumberOfCards() == 1) {
-                                                drawCards(p4,4);
+                                                drawCards(p4,4,pardon);
                                                 displayEffect(p4.getToken(),startingCard,suceed);
                                             } else {
                                                 if (lightning == 4) {
                                                     displayEffect(p4.getToken(),startingCard,suceed,true,lightning);
                                                     if (suceed == 0) {
-                                                        drawCards(p4,1);
-                                                        displayEffect(p4.getToken(),startingCard,suceed);
-                                                        drawCards(p4,4);
+                                                        drawCards(p4,1,pardon);
+                                                        drawCards(p4,4,pardon);
                                                         expiredStun(4,lightning,turnStunned);
+                                                        turn = 3;
                                                     } else {
                                                         turn = 4;
                                                         lightning = 0;
                                                         turnStunned = 0;
                                                     }
                                                 } else {
-                                                    cpuChallengeDraw4Process(p1,p4,startingCard,turn,numPlay,startColor,suceed);
+                                                    if (pardon == 4) {
+                                                        std::cout << "CPU 4 decided to use PARDON card. CPU 4 is IMMUNE to the DRAW 4 effect for this turn!" << std::endl;
+                                                        turn = 4;
+                                                        pardon = -1;
+                                                    } else {
+                                                        cpuChallengeDraw4Process(p1,p4,startingCard,turn,numPlay,startColor,suceed,lightning);
+                                                    }
                                                 }
                                             }
                                         }
                                     } else {
                                         if (p1.getDeck().getNumberOfCards() == 1) {
-                                            drawCards(p2,4);
+                                            drawCards(p2,4,pardon);
                                             displayEffect(p2.getToken(),startingCard,suceed);
                                         } else {
                                             if (lightning == 2) {
                                                 displayEffect(p2.getToken(),startingCard,suceed,true,lightning);
                                                 if (suceed == 0) {
-                                                    drawCards(p2,1);
-                                                    displayEffect(p2.getToken(),startingCard,suceed);
-                                                    drawCards(p2,4);
+                                                    drawCards(p2,1,pardon);
+                                                    drawCards(p2,4,pardon);
                                                     expiredStun(2,lightning,turnStunned);
                                                 } else {
                                                     turn = 2;
@@ -2006,7 +2163,13 @@ int main() {
                                                     turnStunned = 0;
                                                 }
                                             } else {
-                                                cpuChallengeDraw4Process(p1,p2,startingCard,turn,numPlay,startColor,suceed);
+                                                if (pardon == 2) {
+                                                    std::cout << "CPU 2 decided to use PARDON card. CPU 2 is IMMUNE to the DRAW 4 effect for this turn!" << std::endl;
+                                                    turn = 2;
+                                                    pardon = -1;
+                                                } else {
+                                                    cpuChallengeDraw4Process(p1,p2,startingCard,turn,numPlay,startColor,suceed,lightning);
+                                                }
                                             }
                                         }
                                     }
@@ -2014,7 +2177,7 @@ int main() {
                                     startingCard.changeFaceCard(Face("WILD"));
                                     actioned = true;
                                     if (clockwise == true or numPlay == 2) {
-                                        if (lightning == 2) {
+                                        if (lightning == 2 and p1.getDeck().getNumberOfCards() != 1) {
                                             bool tookC = true;
                                             coinFlipChallenge(2,suceed,tookC);
                                             if (suceed == 1) {
@@ -2022,7 +2185,7 @@ int main() {
                                                 lightning = 0;
                                                 turnStunned = 0;
                                             } else if (suceed == 0) {
-                                                drawCards(p2,1);
+                                                drawCards(p2,1,pardon);
                                                 if (numPlay == 4) {
                                                     turn = 3;
                                                 }
@@ -2033,7 +2196,7 @@ int main() {
                                             turn = 2;
                                         }
                                     } else {
-                                        if (lightning == 4) {
+                                        if (lightning == 4 and p1.getDeck().getNumberOfCards() != 1) {
                                             bool tookC = true;
                                             coinFlipChallenge(4,suceed,tookC);
                                             if (suceed == 1) {
@@ -2041,7 +2204,7 @@ int main() {
                                                 lightning = 0;
                                                 turnStunned = 0;
                                             } else if (suceed == 0) {
-                                                drawCards(p4,1);
+                                                drawCards(p4,1,pardon);
                                                 turn = 3;
                                                 expiredStun(4,lightning,turnStunned);
                                             }
@@ -2054,17 +2217,30 @@ int main() {
                                     startingCard.changeFaceCard(Face("LIGHTNING"));
                                     if (lightning == 0 and p1.getDeck().getNumberOfCards() != 1) {
                                         if (clockwise == true or numPlay == 2) {
-                                            lightning = 2;
-                                            displayEffect(p2.getToken(),startingCard,suceed);
-                                            if (numPlay == 4) {
-                                                turn = 3;
+                                            if (pardon == 2) {
+                                                std::cout << "CPU 2 decided to use PARDON card. CPU 2 is IMMUNE to the STUN effect for this turn!" << std::endl;
+                                                turn = 2;
+                                                pardon = -1;
+                                            } else {
+                                                lightning = 2;
+                                                displayEffect(p2.getToken(),startingCard,suceed);
+                                                if (numPlay == 4) {
+                                                    turn = 3;
+                                                }
+                                                turnStunned = 1;
                                             }
                                         } else {
-                                            lightning = 4;
-                                            displayEffect(p4.getToken(),startingCard,suceed);
-                                            turn = 3;
+                                            if (pardon == 4) {
+                                                std::cout << "CPU 4 decided to use PARDON card. CPU 4 is IMMUNE to the STUN effect for this turn!" << std::endl;
+                                                turn = 4;
+                                                pardon = -1;
+                                            } else {
+                                                lightning = 4;
+                                                displayEffect(p4.getToken(),startingCard,suceed);
+                                                turn = 3;
+                                                turnStunned = 1;
+                                            }
                                         }
-                                        turnStunned = 1;
                                     } else {
                                         if (p1.getDeck().getNumberOfCards() == 1) {
                                             std::cout << "Last card of the game! Now treated as standard WILD card. " << std::endl;
@@ -2079,7 +2255,7 @@ int main() {
                                                         lightning = 0;
                                                         turnStunned = 0;
                                                     } else if (suceed == 0) {
-                                                        drawCards(p2,1);
+                                                        drawCards(p2,1,pardon);
                                                         if (numPlay == 4) {
                                                             turn = 3;
                                                         }
@@ -2098,7 +2274,7 @@ int main() {
                                                         lightning = 0;
                                                         turnStunned = 0;
                                                     } else if (suceed == 0) {
-                                                        drawCards(p4,1);
+                                                        drawCards(p4,1,pardon);
                                                         turn = 3;
                                                         expiredStun(4,lightning,turnStunned);
                                                     }
@@ -2120,24 +2296,46 @@ int main() {
                                         if (p1.getDeck().getNumberOfCards() == 1) {
                                             displayEffect(p2.getToken(),startingCard,suceed,true,0);
                                         } else {
-                                            displayEffect(p2.getToken(),startingCard,suceed,true,lightning);
+                                            if (lightning != 2 and p1.getDeck().getCardAtPos(p1.getDeck().getNumberOfCards()-1).getFaceCard().getFace().compare("REVERSE") != 0) {
+                                                if (pardon == 2) {
+                                                    turn = 2;
+                                                } else {
+                                                    displayEffect(p2.getToken(),startingCard,suceed,true,lightning);
+                                                }
+                                            } else {
+                                                displayEffect(p2.getToken(),startingCard,suceed,true,lightning);
+                                            }
                                         }
                                     } else {
                                         if (p1.getDeck().getNumberOfCards() == 1) {
                                             displayEffect(p4.getToken(),startingCard,suceed,true,0);
                                         } else {
-                                            displayEffect(p4.getToken(),startingCard,suceed,true,lightning);
+                                            if (lightning != 4 and p1.getDeck().getCardAtPos(p1.getDeck().getNumberOfCards()-1).getFaceCard().getFace().compare("REVERSE") != 0) {
+                                                if (pardon == 4) {
+                                                    turn = 4;
+                                                } else {
+                                                    displayEffect(p4.getToken(),startingCard,suceed,true,lightning);
+                                                }
+                                            } else {
+                                                displayEffect(p4.getToken(),startingCard,suceed,true,lightning);
+                                            }
                                         }
                                     }
                                     turn = 3;
                                 } else {
-                                    displayEffect(p2.getToken(),startingCard,suceed);
+                                    if (lightning != 2 and p1.getDeck().getCardAtPos(p1.getDeck().getNumberOfCards()-1).getFaceCard().getFace().compare("REVERSE") != 0) {
+                                        if (pardon == 2) {
+                                            turn = 2;
+                                        }
+                                    } else {
+                                        displayEffect(p2.getToken(),startingCard,suceed,true,lightning);
+                                    }
                                 }
                                 if (startingCard.getFaceCard().getFace().compare("DRAW2") == 0) {
                                     if (numPlay == 4) {
                                         if (clockwise == true) {
                                             if (suceed == 0) {
-                                                drawCards(p2,3);
+                                                drawCards(p2,3,pardon);
                                                 turn = 3;
                                                 expiredStun(2,lightning,turnStunned);
                                             } else if (suceed == 1) {
@@ -2145,24 +2343,43 @@ int main() {
                                                 lightning = 0;
                                                 turnStunned = 0;
                                             } else {
-                                                turn = 3;
-                                                drawCards(p2,2);
+                                                if (pardon == 2) {
+                                                    turn = 2;
+                                                    std::cout << "CPU 2 decided to use PARDON card. CPU 2 is IMMUNE to the DRAW 2 effect for this turn!" << std::endl;
+                                                    pardon = -1;
+                                                } else {
+                                                    drawCards(p2,2,pardon);
+                                                    turn = 3;
+                                                }
                                             }
                                         } else {
                                             if (suceed == 0) {
-                                                drawCards(p4,3);
+                                                drawCards(p4,3,pardon);
                                                 turn = 3;
                                                 expiredStun(4,lightning,turnStunned);
                                             } else if (suceed == 1) {
                                                 turn = 4;
                                                 lightning = 0;
                                             } else {
-                                                turn = 3;
-                                                drawCards(p4,2);
+                                                if (pardon == 4) {
+                                                    turn = 4;
+                                                    std::cout << "CPU 4 decided to use PARDON card. CPU 4 is IMMUNE to the DRAW 2 effect for this turn!" << std::endl;
+                                                    pardon = -1;
+                                                } else {
+                                                    drawCards(p4,2,pardon);
+                                                    turn = 3;
+                                                }
                                             }
                                         }
                                     } else {
-                                        drawCards(p2,2);
+                                        if (pardon == 2) {
+                                            turn = 2;
+                                            std::cout << "CPU 2 decided to use PARDON card. CPU 2 is IMMUNE to the DRAW 2 effect for this turn!" << std::endl;
+                                            pardon = -1;
+                                        } else {
+                                            drawCards(p2,2,pardon);
+                                            turn = 3;
+                                        }
                                     }
                                 } else if (startingCard.getFaceCard().getFace().compare("REVERSE") == 0) {
                                     if (numPlay == 4) {
@@ -2186,14 +2403,24 @@ int main() {
                                         } else if (suceed == 0) {
                                             turn = 3;
                                             if (clockwise) {
-                                                drawCards(p2,1);
+                                                drawCards(p2,1,pardon);
                                                 expiredStun(2,lightning,turnStunned);
                                             } else {
-                                                drawCards(p4,1);
+                                                drawCards(p4,1,pardon);
                                                 expiredStun(4,lightning,turnStunned);
                                             }
                                         } else {
-                                            turn = 3;
+                                            if (pardon == 2 and clockwise) {
+                                                std::cout << "CPU 2 decided to use PARDON card. CPU 2 is IMMUNE to the SKIP effect for this turn!" << std::endl;
+                                                turn = 2;
+                                                pardon = -1;
+                                            } else if (pardon == 4 and !clockwise){
+                                                std::cout << "CPU 4 decided to use PARDON card. CPU 4 is IMMUNE to the SKIP effect for this turn!" << std::endl;
+                                                turn = 4;
+                                                pardon = -1;
+                                            } else {
+                                                turn = 3;
+                                            }
                                         }
                                     } else {
                                         if (suceed == 1) {
@@ -2201,8 +2428,13 @@ int main() {
                                             lightning = 0;
                                             turnStunned = 0;
                                         } else if (suceed == 0) {
-                                            drawCards(p2,1);
+                                            drawCards(p2,1,pardon);
                                             expiredStun(2,lightning,turnStunned);
+                                        } else {
+                                            if (pardon == 2) {
+                                                std::cout << "CPU 2 decided to use PARDON card. CPU 2 is IMMUNE to the SKIP effect for this turn!" << std::endl;
+                                                turn = 2;
+                                            }
                                         }
                                     }
                                 }
@@ -2213,7 +2445,7 @@ int main() {
                                 actioned = true;
                                 makeWhiteSpace();
                                 if (numPlay == 2 or clockwise == true) {
-                                    if (lightning == 2) {
+                                    if (lightning == 2 and p1.getDeck().getNumberOfCards() != 1) {
                                         bool tookC = true;
                                         coinFlipChallenge(2,suceed,tookC);
                                         if (suceed == 1) {
@@ -2221,7 +2453,7 @@ int main() {
                                             lightning = 0;
                                             turnStunned = 0;
                                         } else if (suceed == 0) {
-                                            drawCards(p2,1);
+                                            drawCards(p2,1,pardon);
                                             if (numPlay == 4) {
                                                 turn = 3;
                                             }
@@ -2232,7 +2464,7 @@ int main() {
                                         turn = 2;
                                     }
                                 } else {
-                                    if (lightning == 4) {
+                                    if (lightning == 4 and p1.getDeck().getNumberOfCards() != 1) {
                                         bool tookC = true;
                                         coinFlipChallenge(4,suceed,tookC);
                                         if (suceed == 1) {
@@ -2240,7 +2472,7 @@ int main() {
                                             lightning = 0;
                                             turnStunned = 0;
                                         } else if (suceed == 0) {
-                                            drawCards(p4,1);
+                                            drawCards(p4,1,pardon);
                                             turn = 3;
                                             expiredStun(4,lightning,turnStunned);
                                         }
@@ -2255,7 +2487,7 @@ int main() {
                             actioned = true;
                             playedDrew = false;
                             if (numPlay == 2 or clockwise == true) {
-                                if (lightning == 2) {
+                                if (lightning == 2 and p1.getDeck().getNumberOfCards() != 1) {
                                     bool tookC = true;
                                     coinFlipChallenge(2,suceed,tookC);
                                     if (suceed == 1) {
@@ -2263,7 +2495,7 @@ int main() {
                                         lightning = 0;
                                         turnStunned = 0;
                                     } else if (suceed == 0) {
-                                        drawCards(p2,1);
+                                        drawCards(p2,1,pardon);
                                         if (numPlay == 4) {
                                             turn = 3;
                                         }
@@ -2274,7 +2506,7 @@ int main() {
                                     turn = 2;
                                 }
                             } else {
-                                if (lightning == 4) {
+                                if (lightning == 4 and p1.getDeck().getNumberOfCards() != 1) {
                                     bool tookC = true;
                                     coinFlipChallenge(4,suceed,tookC);
                                     if (suceed == 1) {
@@ -2282,7 +2514,7 @@ int main() {
                                         lightning = 0;
                                         turnStunned = 0;
                                     } else if (suceed == 0) {
-                                        drawCards(p4,1);
+                                        drawCards(p4,1,pardon);
                                         turn = 3;
                                         expiredStun(4,lightning,turnStunned);
                                     }
@@ -2301,7 +2533,7 @@ int main() {
                         actioned = true;
                         playedDrew = false;
                         if (numPlay == 2 or clockwise == true) {
-                            if (lightning == 2) {
+                            if (lightning == 2 and p1.getDeck().getNumberOfCards() != 1) {
                                 bool tookC = true;
                                 coinFlipChallenge(2,suceed,tookC);
                                 if (suceed == 1) {
@@ -2309,7 +2541,7 @@ int main() {
                                     lightning = 0;
                                     turnStunned = 0;
                                 } else if (suceed == 0) {
-                                    drawCards(p2,1);
+                                    drawCards(p2,1,pardon);
                                     if (numPlay == 4) {
                                         turn = 3;
                                     }
@@ -2320,7 +2552,7 @@ int main() {
                                 turn = 2;
                             }
                         } else {
-                            if (lightning == 4) {
+                            if (lightning == 4 and p1.getDeck().getNumberOfCards() != 1) {
                                 bool tookC = true;
                                 coinFlipChallenge(4,suceed,tookC);
                                 if (suceed == 1) {
@@ -2328,7 +2560,7 @@ int main() {
                                     lightning = 0;
                                     turnStunned = 0;
                                 } else if (suceed == 0) {
-                                    drawCards(p4,1);
+                                    drawCards(p4,1,pardon);
                                     turn = 3;
                                     expiredStun(4,lightning,turnStunned);
                                 }
@@ -2350,7 +2582,7 @@ int main() {
                 sleep_for(seconds(2));
             //CPU 2's turn
             } else if (turn == 2){
-                verifyUNOs(shoutedUno1,p1,c1);
+                verifyUNOs(shoutedUno1,p1,c1,pardon);
                 if (lightning == 2) {
                     bool tookC = true;
                     coinFlipChallenge(2,suceed,tookC);
@@ -2359,9 +2591,11 @@ int main() {
                         lightning = 0;
                         turnStunned = 0;
                     } else if (suceed == 0) {
-                        drawCards(p2,1);
-                        if (numPlay == 4) {
+                        drawCards(p2,1,pardon);
+                        if (numPlay == 4 and clockwise) {
                             turn = 3;
+                        } else {
+                            turn = 1;
                         }
                         expiredStun(2,lightning,turnStunned);
                         sleep_for(seconds(3));
@@ -2405,73 +2639,103 @@ int main() {
                             if (numPlay == 4) {
                                 if (clockwise == true) {
                                     if (p2.getDeck().getNumberOfCards() == 1) {
-                                        drawCards(p3,4);
+                                        drawCards(p3,4,pardon);
                                         displayEffect(p3.getToken(),startingCard,suceed);
                                     } else {
                                         if (lightning == 3) {
                                             displayEffect(p3.getToken(),startingCard,suceed,true,lightning);
                                             if (suceed == 0) {
-                                                drawCards(p3,1);
-                                                displayEffect(p3.getToken(),startingCard,suceed);
-                                                drawCards(p3,4);
+                                                drawCards(p3,1,pardon);
+                                                drawCards(p3,4,pardon);
                                                 expiredStun(3,lightning,turnStunned);
-
+                                                turn = 4;
                                             } else {
                                                 turn = 3;
                                                 turnStunned = 0;
                                                 lightning = 0;
                                             }
                                         } else {
-                                            cpuChallengeDraw4Process(p2,p3,startingCard,turn,numPlay,startColor,suceed);
+                                            if (pardon == 3) {
+                                                std::cout << "CPU 3 decided to use PARDON card. CPU 3 is IMMUNE to the DRAW 4 effect for this turn!" << std::endl;
+                                                turn = 3;
+                                                pardon = -1;
+                                            } else {
+                                                cpuChallengeDraw4Process(p2,p3,startingCard,turn,numPlay,startColor,suceed,lightning);
+                                            }
                                         }
                                     }
                                 } else {
                                     if (p2.getDeck().getNumberOfCards() == 1) {
-                                        drawCards(p1,4);
+                                        drawCards(p1,4,pardon);
                                         displayEffect(p1.getToken(),startingCard,suceed);
                                     } else {
                                         if (lightning == 1) {
                                             displayEffect(p1.getToken(),startingCard,suceed,true,lightning);
                                             if (suceed == 0) {
-                                                drawCards(p1,1);
-                                                displayEffect(p1.getToken(),startingCard,suceed);
-                                                drawCards(p1,4);
+                                                drawCards(p1,1,pardon);
+                                                drawCards(p1,4,pardon);
                                                 expiredStun(1,lightning,turnStunned);
+                                                turn = 4;
                                             } else {
                                                 turn = 1;
                                                 lightning = 0;
                                                 turnStunned = 0;
                                             }
                                         } else {
-                                            playerChallengeDraw4Process(p2,p1,startingCard,turn,numPlay,startColor,suceed);
+                                            if (pardon == 1) {
+                                                std::cout << "Do you wish to use your PARDON card on the DRAW4WILD played on you? (Y/N): ";
+                                                std::string played;
+                                                std::cin >> played;
+                                                if (played == "Y") {
+                                                    std::cout << "You decided to use PARDON card. You are IMMUNE to the DRAW 4 effect for this turn!" << std::endl;
+                                                    turn = 1;
+                                                    pardon = -1;
+                                                } else {
+                                                    playerChallengeDraw4Process(p2,p1,startingCard,turn,numPlay,startColor,suceed,pardon);
+                                                }
+                                            } else {
+                                                playerChallengeDraw4Process(p2,p1,startingCard,turn,numPlay,startColor,suceed,pardon);
+                                            }
                                         }
                                     }
                                 }
                             } else {
                                 if (p2.getDeck().getNumberOfCards() == 1) {
-                                    drawCards(p1,4);
+                                    drawCards(p1,4,pardon);
                                     displayEffect(p1.getToken(),startingCard,suceed);
                                 } else {
                                     if (lightning == 1) {
                                         displayEffect(p1.getToken(),startingCard,suceed,true,lightning);
                                         if (suceed == 0) {
-                                            drawCards(p1,1);
-                                            displayEffect(p1.getToken(),startingCard,suceed);
-                                            drawCards(p1,4);
+                                            drawCards(p1,1,pardon);
+                                            drawCards(p1,4,pardon);
                                             expiredStun(1,lightning,turnStunned);
                                         } else {
                                             turn = 1;
                                             lightning = 0;
                                         }
                                     } else {
-                                        playerChallengeDraw4Process(p2,p1,startingCard,turn,numPlay,startColor,suceed);
+                                        if (pardon == 1) {
+                                            std::cout << "Do you wish to use your PARDON card on the DRAW4WILD played on you? (Y/N): ";
+                                            std::string played;
+                                            std::cin >> played;
+                                            if (played == "Y") {
+                                                std::cout << "You decided to use PARDON card. You are IMMUNE to the DRAW 4 effect for this turn!" << std::endl;
+                                                turn = 1;
+                                                pardon = -1;
+                                            } else {
+                                                playerChallengeDraw4Process(p2,p1,startingCard,turn,numPlay,startColor,suceed,pardon);
+                                            }
+                                        } else {
+                                            playerChallengeDraw4Process(p2,p1,startingCard,turn,numPlay,startColor,suceed,pardon);
+                                        }
                                     }
                                 }
                             }
                         } else if (p2.getDeck().getCardAtPos(positioned-1).getFaceCard().getFace().compare("WILD") == 0){
                             startingCard.changeFaceCard(Face("WILD"));
                             if (numPlay == 2 or clockwise == false) {
-                                if (lightning == 1) {
+                                if (lightning == 1 and p2.getDeck().getNumberOfCards() != 1) {
                                     bool tookC = true;
                                     coinFlipChallenge(1,suceed,tookC);
                                     if (tookC == false) {
@@ -2485,7 +2749,7 @@ int main() {
                                             lightning = 0;
                                             turnStunned = 0;
                                         } else {
-                                            drawCards(p1,1);
+                                            drawCards(p1,1,pardon);
                                             if (numPlay == 4) {
                                                 turn = 4;
                                             }
@@ -2497,7 +2761,7 @@ int main() {
                                     turn = 1;
                                 }
                             } else {
-                                if (lightning == 3) {
+                                if (lightning == 3 and p2.getDeck().getNumberOfCards() != 1) {
                                     bool tookC = true;
                                     coinFlipChallenge(3,suceed,tookC);
                                     if (suceed == 1) {
@@ -2505,7 +2769,7 @@ int main() {
                                         lightning = 0;
                                         turnStunned = 0;
                                     } else if (suceed == 0) {
-                                        drawCards(p3,1);
+                                        drawCards(p3,1,pardon);
                                         turn = 4;
                                         expiredStun(3,lightning,turnStunned);
                                     }
@@ -2518,17 +2782,42 @@ int main() {
                             startingCard.changeFaceCard(Face("LIGHTNING"));
                             if (lightning == 0 and p2.getDeck().getNumberOfCards() != 1) {
                                 if (clockwise == false or numPlay == 2) {
-                                    lightning = 1;
-                                    displayEffect(p1.getToken(),startingCard,suceed);
-                                    if (numPlay == 4) {
-                                        turn = 4;
+                                    if (pardon == 1) {
+                                        std::cout << "Do you wish to use your PARDON card on the LIGHTNING card played on you? (Y/N): ";
+                                        std::string played;
+                                        std::cin >> played;
+                                        if (played == "Y") {
+                                            std::cout << "You decided to use PARDON card. You are IMMUNE to the STUN effect for this turn!" << std::endl;
+                                            turn = 1;
+                                            pardon = -1;
+                                        } else {
+                                            lightning = 1;
+                                            displayEffect(p1.getToken(),startingCard,suceed);
+                                            if (numPlay == 4) {
+                                                turn = 4;
+                                            }
+                                            turnStunned = 1;
+                                        }
+                                    } else {
+                                        lightning = 1;
+                                        displayEffect(p1.getToken(),startingCard,suceed);
+                                        if (numPlay == 4) {
+                                            turn = 4;
+                                        }
+                                        turnStunned = 1;
                                     }
                                 } else {
-                                    lightning = 3;
-                                    displayEffect(p3.getToken(),startingCard,suceed);
-                                    turn = 4;
+                                    if (pardon == 3) {
+                                        std::cout << "CPU 3 decided to use PARDON card. CPU 3 is IMMUNE to the STUN effect for this turn!" << std::endl;
+                                        turn = 3;
+                                        pardon = -1;
+                                    } else {
+                                        lightning = 3;
+                                        displayEffect(p3.getToken(),startingCard,suceed);
+                                        turn = 4;
+                                        turnStunned = 1;
+                                    }
                                 }
-                                turnStunned = 1;
                             } else {
                                 if (p2.getDeck().getNumberOfCards() == 1) {
                                     std::cout << "Last card of the game! Now treated as standard WILD card. " << std::endl;
@@ -2543,7 +2832,7 @@ int main() {
                                                 lightning = 0;
                                                 turnStunned = 0;
                                             } else if (suceed == 0) {
-                                                drawCards(p3,1);
+                                                drawCards(p3,1,pardon);
                                                 turn = 4;
                                                 expiredStun(3,lightning,turnStunned);
                                             }
@@ -2566,7 +2855,7 @@ int main() {
                                                     lightning = 0;
                                                     turnStunned = 0;
                                                 } else {
-                                                    drawCards(p1,1);
+                                                    drawCards(p1,1,pardon);
                                                     if (numPlay == 4) {
                                                         turn = 4;
                                                     }
@@ -2590,24 +2879,46 @@ int main() {
                                 if (p2.getDeck().getNumberOfCards() == 1) {
                                     displayEffect(p3.getToken(),startingCard,suceed,true,0);
                                 } else {
-                                    displayEffect(p3.getToken(),startingCard,suceed,true,lightning);
+                                    if (lightning != 3 and p2.getDeck().getCardAtPos(positioned-1).getFaceCard().getFace().compare("REVERSE") != 0) {
+                                        if (pardon == 3) {
+                                            turn = 3;
+                                        } else {
+                                            displayEffect(p3.getToken(),startingCard,suceed,true,lightning);
+                                        }
+                                    } else {
+                                        displayEffect(p3.getToken(),startingCard,suceed,true,lightning);
+                                    }
                                 }
                             } else {
                                 if (p2.getDeck().getNumberOfCards() == 1) {
                                     displayEffect(p1.getToken(),startingCard,suceed,true,0);
                                 } else {
-                                    displayEffect(p1.getToken(),startingCard,suceed,true,lightning);
+                                    if (lightning != 1 and p2.getDeck().getCardAtPos(positioned-1).getFaceCard().getFace().compare("REVERSE") != 0) {
+                                        if (pardon == 1) {
+                                            turn = 1;
+                                        } else {
+                                            displayEffect(p1.getToken(),startingCard,suceed,true,lightning);
+                                        }
+                                    } else {
+                                        displayEffect(p1.getToken(),startingCard,suceed,true,lightning);
+                                    }
                                 }
                             }
                             turn = 4;
                         } else {
-                            displayEffect(p1.getToken(),startingCard,suceed);
+                            if (lightning != 1 and p2.getDeck().getCardAtPos(positioned-1).getFaceCard().getFace().compare("REVERSE") != 0) {
+                                if (pardon == 1) {
+                                    turn = 1;
+                                }
+                            } else {
+                                displayEffect(p1.getToken(),startingCard,suceed,true,lightning);
+                            }
                         }
                         if (startingCard.getFaceCard().getFace().compare("DRAW2") == 0) {
                             if (numPlay == 4) {
                                 if (clockwise == true) {
                                     if (suceed == 0) {
-                                        drawCards(p3,3);
+                                        drawCards(p3,3,pardon);
                                         turn = 4;
                                         expiredStun(3,lightning,turnStunned);
                                     } else if (suceed == 1) {
@@ -2615,12 +2926,18 @@ int main() {
                                         lightning = 0;
                                         turnStunned = 0;
                                     } else {
-                                        turn = 4;
-                                        drawCards(p3,2);
+                                        if (pardon == 3) {
+                                            turn = 3;
+                                            std::cout << "CPU 3 decided to use PARDON card. CPU 3 is IMMUNE to the DRAW 2 effect for this turn!" << std::endl;
+                                            pardon = -1;
+                                        } else {
+                                            drawCards(p3,2,pardon);
+                                            turn = 4;
+                                        }
                                     }
                                 } else {
                                     if (suceed == 0) {
-                                        drawCards(p1,3);
+                                        drawCards(p1,3,pardon);
                                         turn = 4;
                                         expiredStun(1,lightning,turnStunned);
                                     } else if (suceed == 1) {
@@ -2628,20 +2945,49 @@ int main() {
                                         lightning = 0;
                                         turnStunned = 0;
                                     } else {
-                                        turn = 4;
-                                        drawCards(p1,2);
+                                        if (pardon == 1) {
+                                            std::cout << "Do you wish to use your PARDON card on the DRAW 2 played on you? (Y/N): ";
+                                            std::string used;
+                                            std::cin >> used;
+                                            if (used == "Y") {
+                                                std::cout << "You decided to use your PARDON card. You are IMMUNE to the DRAW 2 effect for this turn!" << std::endl;
+                                                turn = 1;
+                                                pardon = -1;
+                                            } else {
+                                                turn = 4;
+                                                drawCards(p1,2,pardon);
+                                                displayEffect(p1.getToken(),startingCard,suceed,true,lightning);
+                                            }
+                                        } else {
+                                            turn = 4;
+                                            drawCards(p1,2,pardon);
+                                        }
                                     }
                                 }
                             } else {
                                 if (suceed == 0) {
-                                    drawCards(p1,3);
+                                    drawCards(p1,3,pardon);
                                     expiredStun(1,lightning,turnStunned);
                                 } else if (suceed == 1) {
                                     turn = 1;
                                     lightning = 0;
                                     turnStunned = 0;
                                 } else {
-                                    drawCards(p1,2);
+                                    if (pardon == 1) {
+                                        std::cout << "Do you wish to use your PARDON card on the DRAW 2 played on you? (Y/N): ";
+                                        std::string used;
+                                        std::cin >> used;
+                                        if (used == "Y") {
+                                            std::cout << "You decided to use your PARDON card. You are IMMUNE to the DRAW 2 effect for this turn!" << std::endl;
+                                            turn = 1;
+                                            pardon = -1;
+                                        } else {
+                                            drawCards(p1,2,pardon);
+                                            displayEffect(p1.getToken(),startingCard,suceed,true,lightning);
+                                        }
+                                    } else {
+                                        drawCards(p1,2,pardon);
+                                    }
                                 }
                             }
                         } else if (startingCard.getFaceCard().getFace().compare("REVERSE") == 0) {
@@ -2666,14 +3012,32 @@ int main() {
                                 } else if (suceed == 0) {
                                     turn = 4;
                                     if (clockwise) {
-                                        drawCards(p3,1);
+                                        drawCards(p3,1,pardon);
                                         expiredStun(3,lightning,turnStunned);
                                     } else {
-                                        drawCards(p1,1);
+                                        drawCards(p1,1,pardon);
                                         expiredStun(1,lightning,turnStunned);
                                     }
                                 } else {
-                                    turn = 4;
+                                    if (clockwise and pardon == 3) {
+                                        turn = 3;
+                                        std::cout << "CPU 3 decided to use PARDON card. CPU 3 is IMMUNE to the SKIP effect for this turn!" << std::endl;
+                                        pardon = -1;
+                                    } else if (!clockwise and pardon == 1) {
+                                        std::cout << "Do you wish to use your PARDON card on the SKIP played on you? (Y/N): ";
+                                        std::string used;
+                                        std::cin >> used;
+                                        if (used == "Y") {
+                                            std::cout << "You decided to use your PARDON card. You are IMMUNE to the SKIP effect for this turn!" << std::endl;
+                                            turn = 1;
+                                            pardon = -1;
+                                        } else {
+                                            turn = 4;
+                                            displayEffect(p1.getToken(),startingCard,suceed,true,lightning);
+                                        }
+                                    } else {
+                                        turn = 4;
+                                    }
                                 }
                             } else {
                                 if (suceed == 1) {
@@ -2681,8 +3045,20 @@ int main() {
                                     lightning = 0;
                                     turnStunned = 0;
                                 } else if (suceed == 0) {
-                                    drawCards(p1,1);
+                                    drawCards(p1,1,pardon);
                                     expiredStun(1,lightning,turnStunned);
+                                } else {
+                                    std::cout << "Do you wish to use your PARDON card on the SKIP played on you? (Y/N): ";
+                                    std::string used;
+                                    std::cin >> used;
+                                    if (used == "Y") {
+                                        std::cout << "You decided to use your PARDON card. You are IMMUNE to the SKIP effect for this turn!" << std::endl;
+                                        turn = 1;
+                                        pardon = -1;
+                                    } else {
+                                        turn = 4;
+                                        displayEffect(p1.getToken(),startingCard,suceed,true,lightning);
+                                    }
                                 }
                             }
                         }
@@ -2691,7 +3067,7 @@ int main() {
                         startingCard.changeColorCard(p2.getDeck().getCardAtPos(positioned-1).getColorCard());
                         startingCard.changeFaceCard(p2.getDeck().getCardAtPos(positioned-1).getFaceCard());
                         if (numPlay == 4 and clockwise == true) {
-                            if (lightning == 3) {
+                            if (lightning == 3 and p2.getDeck().getNumberOfCards() != 1) {
                                 bool tookC = true;
                                 coinFlipChallenge(3,suceed,tookC);
                                 if (suceed == 1) {
@@ -2699,7 +3075,7 @@ int main() {
                                     lightning = 0;
                                     turnStunned = 0;
                                 } else if (suceed == 0) {
-                                    drawCards(p3,1);
+                                    drawCards(p3,1,pardon);
                                     turn = 4;
                                     expiredStun(3,lightning,turnStunned);
                                 }
@@ -2708,7 +3084,7 @@ int main() {
                                 turn = 3;
                             }
                         } else {
-                            if (lightning == 1) {
+                            if (lightning == 1 and p2.getDeck().getNumberOfCards() != 1) {
                                 bool tookC = true;
                                 coinFlipChallenge(1,suceed,tookC);
                                 if (tookC == false) {
@@ -2722,7 +3098,7 @@ int main() {
                                         lightning = 0;
                                         turnStunned = 0;
                                     } else {
-                                        drawCards(p1,1);
+                                        drawCards(p1,1,pardon);
                                         if (numPlay == 4) {
                                             turn = 4;
                                         }
@@ -2762,57 +3138,75 @@ int main() {
                                 if (numPlay == 4) {
                                     if (clockwise == true) {
                                         if (p2.getDeck().getNumberOfCards() == 1) {
-                                            drawCards(p3,4);
+                                            drawCards(p3,4,pardon);
                                             displayEffect(p3.getToken(),startingCard,suceed);
                                         } else {
                                             if (lightning == 3) {
                                                 displayEffect(p3.getToken(),startingCard,suceed,true,lightning);
                                                 if (suceed == 0) {
-                                                    drawCards(p3,1);
-                                                    displayEffect(p3.getToken(),startingCard,suceed);
-                                                    drawCards(p3,4);
+                                                    drawCards(p3,1,pardon);
+                                                    drawCards(p3,4,pardon);
                                                     expiredStun(3,lightning,turnStunned);
+                                                    turn = 4;
                                                 } else {
                                                     turn = 3;
                                                     lightning = 0;
                                                     turnStunned = 0;
                                                 }
                                             } else {
-                                                cpuChallengeDraw4Process(p2,p3,startingCard,turn,numPlay,startColor,suceed);
+                                                if (pardon == 3) {
+                                                    std::cout << "CPU 3 decided to use PARDON card. CPU 3 is IMMUNE to the DRAW 4 effect for this turn!" << std::endl;
+                                                    turn = 3;
+                                                    pardon = -1;
+                                                } else {
+                                                    cpuChallengeDraw4Process(p2,p3,startingCard,turn,numPlay,startColor,suceed,lightning);
+                                                }
                                             }
                                         }
                                     } else {
                                         if (p2.getDeck().getNumberOfCards() == 1) {
-                                            drawCards(p1,4);
+                                            drawCards(p1,4,pardon);
                                             displayEffect(p1.getToken(),startingCard,suceed);
                                         } else {
                                             if (lightning == 1) {
                                                 displayEffect(p1.getToken(),startingCard,suceed,true,lightning);
                                                 if (suceed == 0) {
-                                                    drawCards(p1,1);
-                                                    displayEffect(p1.getToken(),startingCard,suceed);
-                                                    drawCards(p1,4);
+                                                    drawCards(p1,1,pardon);
+                                                    drawCards(p1,4,pardon);
                                                     expiredStun(1,lightning,turnStunned);
+                                                    turn = 4;
                                                 } else {
                                                     turn = 1;
                                                     lightning = 0;
                                                 }
                                             } else {
-                                                playerChallengeDraw4Process(p2,p1,startingCard,turn,numPlay,startColor,suceed);
+                                                if (pardon == 1) {
+                                                    std::cout << "Do you wish to use your PARDON card on the DRAW4WILD played on you? (Y/N): ";
+                                                    std::string played;
+                                                    std::cin >> played;
+                                                    if (played == "Y") {
+                                                        std::cout << "You decided to use PARDON card. You are IMMUNE to the DRAW 4 effect for this turn!" << std::endl;
+                                                        turn = 1;
+                                                        pardon = -1;
+                                                    } else {
+                                                        playerChallengeDraw4Process(p2,p1,startingCard,turn,numPlay,startColor,suceed,pardon);
+                                                    }
+                                                } else {
+                                                    playerChallengeDraw4Process(p2,p1,startingCard,turn,numPlay,startColor,suceed,pardon);
+                                                }
                                             }
                                         }
                                     }
                                 } else {
                                     if (p2.getDeck().getNumberOfCards() == 1) {
-                                        drawCards(p1,4);
+                                        drawCards(p1,4,pardon);
                                         displayEffect(p1.getToken(),startingCard,suceed);
                                     } else {
                                         if (lightning == 1) {
                                             displayEffect(p1.getToken(),startingCard,suceed,true,lightning);
                                             if (suceed == 0) {
-                                                drawCards(p1,1);
-                                                displayEffect(p1.getToken(),startingCard,suceed);
-                                                drawCards(p1,4);
+                                                drawCards(p1,1,pardon);
+                                                drawCards(p1,4,pardon);
                                                 expiredStun(1,lightning,turnStunned);
                                             } else {
                                                 turn = 1;
@@ -2820,14 +3214,27 @@ int main() {
                                                 turnStunned = 0;
                                             }
                                         } else {
-                                            playerChallengeDraw4Process(p2,p1,startingCard,turn,numPlay,startColor,suceed);
+                                            if (pardon == 1) {
+                                                std::cout << "Do you wish to use your PARDON card on the DRAW4WILD played on you? (Y/N): ";
+                                                std::string played;
+                                                std::cin >> played;
+                                                if (played == "Y") {
+                                                    std::cout << "You decided to use PARDON card. You are IMMUNE to the DRAW 4 effect for this turn!" << std::endl;
+                                                    turn = 1;
+                                                    pardon = -1;
+                                                } else {
+                                                    playerChallengeDraw4Process(p2,p1,startingCard,turn,numPlay,startColor,suceed,pardon);
+                                                }
+                                            } else {
+                                                playerChallengeDraw4Process(p2,p1,startingCard,turn,numPlay,startColor,suceed,pardon);
+                                            }
                                         }
                                     }
                                 }
                             } else if (p2.getDeck().getCardAtPos(p2.getDeck().getNumberOfCards()-1).getFaceCard().getFace().compare("WILD") == 0){
                                 startingCard.changeFaceCard(Face("WILD"));
                                 if (numPlay == 2 or clockwise == false) {
-                                    if (lightning == 1) {
+                                    if (lightning == 1 and p2.getDeck().getNumberOfCards() != 1) {
                                         bool tookC = true;
                                         coinFlipChallenge(1,suceed,tookC);
                                         if (tookC == false) {
@@ -2841,7 +3248,7 @@ int main() {
                                                 lightning = 0;
                                                 turnStunned = 0;
                                             } else {
-                                                drawCards(p1,1);
+                                                drawCards(p1,1,pardon);
                                                 if (numPlay == 4) {
                                                     turn = 4;
                                                 }
@@ -2853,7 +3260,7 @@ int main() {
                                         turn = 1;
                                     }
                                 } else {
-                                    if (lightning == 3) {
+                                    if (lightning == 3 and p2.getDeck().getNumberOfCards() != 1) {
                                         bool tookC = true;
                                         coinFlipChallenge(3,suceed,tookC);
                                         if (suceed == 1) {
@@ -2861,7 +3268,7 @@ int main() {
                                             lightning = 0;
                                             turnStunned = 0;
                                         } else if (suceed == 0) {
-                                            drawCards(p3,1);
+                                            drawCards(p3,1,pardon);
                                             turn = 4;
                                             expiredStun(3,lightning,turnStunned);
                                         }
@@ -2874,17 +3281,42 @@ int main() {
                                 startingCard.changeFaceCard(Face("LIGHTNING"));
                                 if (lightning == 0 and p2.getDeck().getNumberOfCards() != 1) {
                                     if (clockwise == false or numPlay == 2) {
-                                        lightning = 1;
-                                        displayEffect(p1.getToken(),startingCard,suceed);
-                                        if (numPlay == 4) {
-                                            turn = 4;
+                                        if (pardon == 1) {
+                                            std::cout << "Do you wish to use your PARDON card on the LIGHTNING card played on you? (Y/N): ";
+                                            std::string played;
+                                            std::cin >> played;
+                                            if (played == "Y") {
+                                                std::cout << "You decided to use PARDON card. You are IMMUNE to the STUN effect for this turn!" << std::endl;
+                                                turn = 1;
+                                                pardon = -1;
+                                            } else {
+                                                lightning = 1;
+                                                displayEffect(p1.getToken(),startingCard,suceed);
+                                                if (numPlay == 4) {
+                                                    turn = 4;
+                                                }
+                                                turnStunned = 1;
+                                            }
+                                        } else {
+                                            lightning = 1;
+                                            displayEffect(p1.getToken(),startingCard,suceed);
+                                            if (numPlay == 4) {
+                                                turn = 4;
+                                            }
+                                            turnStunned = 1;
                                         }
                                     } else {
-                                        lightning = 3;
-                                        displayEffect(p3.getToken(),startingCard,suceed);
-                                        turn = 4;
+                                        if (pardon == 3) {
+                                            std::cout << "CPU 3 decided to use PARDON card. CPU 3 is IMMUNE to the STUN effect for this turn!" << std::endl;
+                                            turn = 3;
+                                            pardon = -1;
+                                        } else {
+                                            lightning = 3;
+                                            displayEffect(p3.getToken(),startingCard,suceed);
+                                            turn = 4;
+                                            turnStunned = 1;
+                                        }
                                     }
-                                    turnStunned = 1;
                                 } else {
                                     if (p2.getDeck().getNumberOfCards() == 1) {
                                         std::cout << "Last card of the game! Now treated as standard WILD card. " << std::endl;
@@ -2905,7 +3337,7 @@ int main() {
                                                         lightning = 0;
                                                         turnStunned = 0;
                                                     } else {
-                                                        drawCards(p1,1);
+                                                        drawCards(p1,1,pardon);
                                                         if (numPlay == 4) {
                                                             turn = 4;
                                                         }
@@ -2925,7 +3357,7 @@ int main() {
                                                     lightning = 0;
                                                     turnStunned = 0;
                                                 } else if (suceed == 0) {
-                                                    drawCards(p3,1);
+                                                    drawCards(p3,1,pardon);
                                                     turn = 4;
                                                     expiredStun(3,lightning,turnStunned);
                                                 }
@@ -2946,24 +3378,46 @@ int main() {
                                     if (p2.getDeck().getNumberOfCards() == 1) {
                                         displayEffect(p3.getToken(),startingCard,suceed,true,0);
                                     } else {
-                                        displayEffect(p3.getToken(),startingCard,suceed,true,lightning);
+                                        if (lightning != 3 and p2.getDeck().getCardAtPos(p2.getDeck().getNumberOfCards()-1).getFaceCard().getFace().compare("REVERSE") != 0) {
+                                            if (pardon == 3) {
+                                                turn = 3;
+                                            } else {
+                                                displayEffect(p3.getToken(),startingCard,suceed,true,lightning);
+                                            }
+                                        } else {
+                                            displayEffect(p3.getToken(),startingCard,suceed,true,lightning);
+                                        }
                                     }
                                 } else {
                                     if (p2.getDeck().getNumberOfCards() == 1) {
                                         displayEffect(p1.getToken(),startingCard,suceed,true,0);
                                     } else {
-                                        displayEffect(p1.getToken(),startingCard,suceed,true,lightning);
+                                        if (lightning != 1 and p2.getDeck().getCardAtPos(p2.getDeck().getNumberOfCards()-1).getFaceCard().getFace().compare("REVERSE") != 0) {
+                                            if (pardon == 1) {
+                                                turn = 1;
+                                            } else {
+                                                displayEffect(p1.getToken(),startingCard,suceed,true,lightning);
+                                            }
+                                        } else {
+                                            displayEffect(p1.getToken(),startingCard,suceed,true,lightning);
+                                        }
                                     }
                                 }
                                 turn = 4;
                             } else {
-                                displayEffect(p1.getToken(),startingCard,suceed);
+                                if (lightning != 1 and p2.getDeck().getCardAtPos(p1.getDeck().getNumberOfCards()-1).getFaceCard().getFace().compare("REVERSE") != 0) {
+                                    if (pardon == 1) {
+                                        turn = 1;
+                                    }
+                                } else {
+                                    displayEffect(p1.getToken(),startingCard,suceed,true,lightning);
+                                }
                             }
                             if (startingCard.getFaceCard().getFace().compare("DRAW2") == 0) {
                                 if (numPlay == 4) {
                                     if (clockwise == true) {
                                         if (suceed == 0) {
-                                            drawCards(p3,3);
+                                            drawCards(p3,3,pardon);
                                             turn = 4;
                                             expiredStun(3,lightning,turnStunned);
                                         } else if (suceed == 1) {
@@ -2971,12 +3425,18 @@ int main() {
                                             lightning = 0;
                                             turnStunned = 0;
                                         } else {
-                                            turn = 4;
-                                            drawCards(p3,2);
+                                            if (pardon == 3) {
+                                                turn = 3;
+                                                std::cout << "CPU 3 decided to use PARDON card. CPU 3 is IMMUNE to the DRAW 2 effect for this turn!" << std::endl;
+                                                pardon = -1;
+                                            } else {
+                                                drawCards(p3,2,pardon);
+                                                turn = 4;
+                                            }
                                         }
                                     } else {
                                         if (suceed == 0) {
-                                            drawCards(p1,3);
+                                            drawCards(p1,3,pardon);
                                             turn = 4;
                                             expiredStun(1,lightning,turnStunned);
                                         } else if (suceed == 1) {
@@ -2984,19 +3444,49 @@ int main() {
                                             lightning = 0;
                                             turnStunned = 0;
                                         } else {
-                                            turn = 4;
-                                            drawCards(p1,2);
+                                            if (pardon == 1) {
+                                                std::cout << "Do you wish to use your PARDON card on the DRAW 2 played on you? (Y/N): ";
+                                                std::string used;
+                                                std::cin >> used;
+                                                if (used == "Y") {
+                                                    std::cout << "You decided to use your PARDON card. You are IMMUNE to the DRAW 2 effect for this turn!" << std::endl;
+                                                    turn = 1;
+                                                    pardon = -1;
+                                                } else {
+                                                    turn = 4;
+                                                    drawCards(p1,2,pardon);
+                                                    displayEffect(p1.getToken(),startingCard,suceed,true,lightning);
+                                                }
+                                            } else {
+                                                turn = 4;
+                                                drawCards(p1,2,pardon);
+                                            }
                                         }
                                     }
                                 } else {
                                     if (suceed == 0) {
-                                        drawCards(p1,3);
+                                        drawCards(p1,3,pardon);
                                         expiredStun(1,lightning,turnStunned);
                                     } else if (suceed == 1) {
                                         turn = 1;
                                         lightning = 0;
+                                        turnStunned = 0;
                                     } else {
-                                        drawCards(p1,2);
+                                        if (pardon == 1) {
+                                            std::cout << "Do you wish to use your PARDON card on the DRAW 2 played on you? (Y/N): ";
+                                            std::string used;
+                                            std::cin >> used;
+                                            if (used == "Y") {
+                                                std::cout << "You decided to use your PARDON card. You are IMMUNE to the DRAW 2 effect for this turn!" << std::endl;
+                                                turn = 1;
+                                                pardon = -1;
+                                            } else {
+                                                drawCards(p1,2,pardon);
+                                                displayEffect(p1.getToken(),startingCard,suceed,true,lightning);
+                                            }
+                                        } else {
+                                            drawCards(p1,2,pardon);
+                                        }
                                     }
                                 }
                             } else if (startingCard.getFaceCard().getFace().compare("REVERSE") == 0) {
@@ -3021,14 +3511,32 @@ int main() {
                                     } else if (suceed == 0) {
                                         turn = 4;
                                         if (clockwise) {
-                                            drawCards(p3,1);
+                                            drawCards(p3,1,pardon);
                                             expiredStun(3,lightning,turnStunned);
                                         } else {
-                                            drawCards(p1,1);
+                                            drawCards(p1,1,pardon);
                                             expiredStun(1,lightning,turnStunned);
                                         }
                                     } else {
-                                        turn = 4;
+                                        if (clockwise and pardon == 3) {
+                                            turn = 3;
+                                            std::cout << "CPU 3 decided to use PARDON card. CPU 3 is IMMUNE to the SKIP effect for this turn!" << std::endl;
+                                            pardon = -1;
+                                        } else if (!clockwise and pardon == 1) {
+                                            std::cout << "Do you wish to use your PARDON card on the SKIP played on you? (Y/N): ";
+                                            std::string used;
+                                            std::cin >> used;
+                                            if (used == "Y") {
+                                                std::cout << "You decided to use your PARDON card. You are IMMUNE to the SKIP effect for this turn!" << std::endl;
+                                                turn = 1;
+                                                pardon = -1;
+                                            } else {
+                                                turn = 4;
+                                                displayEffect(p1.getToken(),startingCard,suceed,true,lightning);
+                                            }
+                                        } else {
+                                            turn = 4;
+                                        }
                                     }
                                 } else {
                                     if (suceed == 1) {
@@ -3036,8 +3544,20 @@ int main() {
                                         lightning = 0;
                                         turnStunned = 0;
                                     } else if (suceed == 0) {
-                                        drawCards(p1,1);
+                                        drawCards(p1,1,pardon);
                                         expiredStun(1,lightning,turnStunned);
+                                    } else {
+                                        std::cout << "Do you wish to use your PARDON card on the SKIP played on you? (Y/N): ";
+                                        std::string used;
+                                        std::cin >> used;
+                                        if (used == "Y") {
+                                            std::cout << "You decided to use your PARDON card. You are IMMUNE to the SKIP effect for this turn!" << std::endl;
+                                            turn = 1;
+                                            pardon = -1;
+                                        } else {
+                                            turn = 4;
+                                            displayEffect(p1.getToken(),startingCard,suceed,true,lightning);
+                                        }
                                     }
                                 }
                             }
@@ -3046,7 +3566,7 @@ int main() {
                             startingCard.changeColorCard(p2.getDeck().getCardAtPos(p2.getDeck().getNumberOfCards()-1).getColorCard());
                             startingCard.changeFaceCard(p2.getDeck().getCardAtPos(p2.getDeck().getNumberOfCards()-1).getFaceCard());
                             if (numPlay == 4 and clockwise == true) {
-                                if (lightning == 3) {
+                                if (lightning == 3 and p2.getDeck().getNumberOfCards() != 1) {
                                     bool tookC = true;
                                     coinFlipChallenge(3,suceed,tookC);
                                     if (suceed == 1) {
@@ -3054,7 +3574,7 @@ int main() {
                                         lightning = 0;
                                         turnStunned = 0;
                                     } else if (suceed == 0) {
-                                        drawCards(p3,1);
+                                        drawCards(p3,1,pardon);
                                         turn = 4;
                                         expiredStun(3,lightning,turnStunned);
                                     }
@@ -3063,7 +3583,7 @@ int main() {
                                     turn = 3;
                                 }
                             } else {
-                                if (lightning == 1) {
+                                if (lightning == 1 and p2.getDeck().getNumberOfCards() != 1) {
                                     bool tookC = true;
                                     coinFlipChallenge(1,suceed,tookC);
                                     if (tookC == false) {
@@ -3077,7 +3597,7 @@ int main() {
                                             lightning = 0;
                                             turnStunned = 0;
                                         } else {
-                                            drawCards(p1,1);
+                                            drawCards(p1,1,pardon);
                                             if (numPlay == 4) {
                                                 turn = 4;
                                             }
@@ -3122,8 +3642,12 @@ int main() {
                         lightning = 0;
                         turnStunned = 0;
                     } else if (suceed == 0) {
-                        drawCards(p3,1);
-                        turn = 4;
+                        drawCards(p3,1,pardon);
+                        if (clockwise) {
+                            turn = 4;
+                        } else {
+                            turn = 2;
+                        }
                         expiredStun(3,lightning,turnStunned);
                         sleep_for(seconds(3));
                         continue;
@@ -3134,7 +3658,7 @@ int main() {
                     shoutedUno1 = false;
                     c1 = 0;
                 }
-                verifyUNOs(shoutedUno1,p1,c1); 
+                verifyUNOs(shoutedUno1,p1,c1,pardon); 
                 actioned = false;
                 p1 = Player(Deck(sort(p1.getDeck().getCards())),1,pt1,rounds1);
                 p2 = Player(Deck(sort(p2.getDeck().getCards())),2,pt2,rounds2);
@@ -3164,51 +3688,64 @@ int main() {
                             startingCard.changeFaceCard(Face("DRAW4WILD"));
                             if (clockwise == true) {
                                 if (p3.getDeck().getNumberOfCards() == 1) {
-                                    drawCards(p4,4);
+                                    drawCards(p4,4,pardon);
                                     displayEffect(p4.getToken(),startingCard,suceed);
                                 } else {
                                     if (lightning == 4) {
                                         displayEffect(p4.getToken(),startingCard,suceed,true,lightning);
                                         if (suceed == 0) {
-                                            drawCards(p4,1);
-                                            displayEffect(p4.getToken(),startingCard,suceed);
-                                            drawCards(p4,4);
+                                            drawCards(p4,1,pardon);
+                                            drawCards(p4,4,pardon);
                                             expiredStun(4,lightning,turnStunned);
-                                        } else {
                                             turn = 1;
+                                        } else {
+                                            turn = 4;
                                             lightning = 0;
                                             turnStunned = 0;
                                         }
                                     } else {
-                                        cpuChallengeDraw4Process(p3,p4,startingCard,turn,numPlay,startColor,suceed);
+                                        if (pardon == 4) {
+                                            std::cout << "CPU 4 decided to use PARDON card. CPU 4 is IMMUNE to the DRAW 4 effect for this turn!" << std::endl;
+                                            turn = 4;
+                                            pardon = -1;
+                                        } else {
+                                            cpuChallengeDraw4Process(p3,p4,startingCard,turn,numPlay,startColor,suceed,pardon);
+                                        }
                                     }
                                 }
                             } else {
                                 if (p3.getDeck().getNumberOfCards() == 1) {
-                                    drawCards(p2,4);
+                                    drawCards(p2,4,pardon);
                                     displayEffect(p2.getToken(),startingCard,suceed);
                                 } else {
                                     if (lightning == 2) {
                                         displayEffect(p2.getToken(),startingCard,suceed,true,lightning);
                                         if (suceed == 0) {
-                                            drawCards(p2,1);
+                                            drawCards(p2,1,pardon);
                                             displayEffect(p2.getToken(),startingCard,suceed);
-                                            drawCards(p2,4);
+                                            drawCards(p2,4,pardon);
                                             expiredStun(2,lightning,turnStunned);
-                                        } else {
                                             turn = 1;
+                                        } else {
+                                            turn = 2;
                                             lightning = 0;
                                             turnStunned = 0;
                                         }
                                     } else {
-                                        cpuChallengeDraw4Process(p3,p2,startingCard,turn,numPlay,startColor,suceed);
+                                        if (pardon == 2) {
+                                            std::cout << "CPU 2 decided to use PARDON card. CPU 2 is IMMUNE to the DRAW 4 effect for this turn!" << std::endl;
+                                            turn = 2;
+                                            pardon = -1;
+                                        } else {
+                                            cpuChallengeDraw4Process(p3,p2,startingCard,turn,numPlay,startColor,suceed,pardon);
+                                        }
                                     }
                                 }
                             }
                         } else if (p3.getDeck().getCardAtPos(positioned-1).getFaceCard().getFace().compare("WILD") == 0){
                             startingCard.changeFaceCard(Face("WILD"));
                             if (clockwise == false) {
-                                if (lightning == 2) {
+                                if (lightning == 2 and p3.getDeck().getNumberOfCards() != 1) {
                                     bool tookC = true;
                                     coinFlipChallenge(2,suceed,tookC);
                                     if (suceed == 1) {
@@ -3216,7 +3753,7 @@ int main() {
                                         lightning = 0;
                                         turnStunned = 0;
                                     } else if (suceed == 0) {
-                                        drawCards(p2,1);
+                                        drawCards(p2,1,pardon);
                                         turn = 1;
                                         expiredStun(2,lightning,turnStunned);
                                     }
@@ -3225,7 +3762,7 @@ int main() {
                                     turn = 2;
                                 }
                             } else {
-                                if (lightning == 4) {
+                                if (lightning == 4 and p3.getDeck().getNumberOfCards() != 1) {
                                     bool tookC = true;
                                     coinFlipChallenge(4,suceed,tookC);
                                     if (suceed == 1) {
@@ -3233,7 +3770,7 @@ int main() {
                                         lightning = 0;
                                         turnStunned = 0;
                                     } else if (suceed == 0) {
-                                        drawCards(p4,1);
+                                        drawCards(p4,1,pardon);
                                         turn = 1;
                                         expiredStun(4,lightning,turnStunned);
                                     }
@@ -3246,15 +3783,28 @@ int main() {
                             startingCard.changeFaceCard(Face("LIGHTNING"));
                             if (lightning == 0 and p3.getDeck().getNumberOfCards() != 1) {
                                 if (clockwise == false) {
-                                    lightning = 2;
-                                    displayEffect(p2.getToken(),startingCard,suceed,true,lightning);
-                                    turn = 1;
+                                    if (pardon == 2) {
+                                        std::cout << "CPU 2 decided to use PARDON card. CPU 2 is IMMUNE to the STUN effect for this turn!" << std::endl;
+                                        turn = 2;
+                                        pardon = -1;
+                                    } else {
+                                        lightning = 2;
+                                        displayEffect(p2.getToken(),startingCard,suceed,true,lightning);
+                                        turn = 1;
+                                        turnStunned = 1;
+                                    }
                                 } else {
-                                    lightning = 4;
-                                    displayEffect(p4.getToken(),startingCard,suceed,true,lightning);
-                                    turn = 1;
+                                    if (pardon == 4) {
+                                        std::cout << "CPU 4 decided to use PARDON card. CPU 4 is IMMUNE to the STUN effect for this turn!" << std::endl;
+                                        turn = 4;
+                                        pardon = -1;
+                                    } else {
+                                        lightning = 4;
+                                        displayEffect(p4.getToken(),startingCard,suceed,true,lightning);
+                                        turn = 1;
+                                        turnStunned = 1;
+                                    }
                                 }
-                                turnStunned = 1;
                             } else {
                                 if (p3.getDeck().getNumberOfCards() == 1) {
                                     std::cout << "Last card of the game! Now treated as standard WILD card. " << std::endl;
@@ -3269,7 +3819,7 @@ int main() {
                                                 lightning = 0;
                                                 turnStunned = 0;
                                             } else if (suceed == 0) {
-                                                drawCards(p2,1);
+                                                drawCards(p2,1,pardon);
                                                 turn = 1;
                                                 expiredStun(2,lightning,turnStunned);
                                             }
@@ -3286,7 +3836,7 @@ int main() {
                                                 lightning = 0;
                                                 turnStunned = 0;
                                             } else if (suceed == 0) {
-                                                drawCards(p4,1);
+                                                drawCards(p4,1,pardon);
                                                 turn = 1;
                                                 expiredStun(4,lightning,turnStunned);
                                             }
@@ -3306,19 +3856,37 @@ int main() {
                             if (p3.getDeck().getNumberOfCards() == 1) {
                                 displayEffect(p4.getToken(),startingCard,suceed,true,0);
                             } else {
-                                displayEffect(p4.getToken(),startingCard,suceed,true,lightning);
+                                if (lightning != 4 and p3.getDeck().getCardAtPos(positioned-1).getFaceCard().getFace().compare("REVERSE") != 0) {
+                                    if (pardon == 4) {
+                                        turn = 4;
+                                        pardon = -1;
+                                    } else {
+                                        displayEffect(p4.getToken(),startingCard,suceed,true,lightning);
+                                    }
+                                } else {
+                                    displayEffect(p4.getToken(),startingCard,suceed,true,lightning);
+                                }
                             }
                         } else {
                             if (p3.getDeck().getNumberOfCards() == 1) {
                                 displayEffect(p2.getToken(),startingCard,suceed,true,0);
                             } else {
-                                displayEffect(p2.getToken(),startingCard,suceed,true,lightning);
+                                if (lightning != 2 and p3.getDeck().getCardAtPos(positioned-1).getFaceCard().getFace().compare("REVERSE") != 0) {
+                                    if (pardon == 2) {
+                                        turn = 2;
+                                        pardon = -1;
+                                    } else {
+                                        displayEffect(p2.getToken(),startingCard,suceed,true,lightning);
+                                    }
+                                } else {
+                                    displayEffect(p2.getToken(),startingCard,suceed,true,lightning);
+                                }
                             }
                         }
                         if (startingCard.getFaceCard().getFace().compare("DRAW2") == 0) {
                             if (clockwise == true) {
                                 if (suceed == 0) {
-                                    drawCards(p4,3);
+                                    drawCards(p4,3,pardon);
                                     turn = 1;
                                     expiredStun(4,lightning,turnStunned);
                                 } else if (suceed == 1) {
@@ -3326,12 +3894,18 @@ int main() {
                                     lightning = 0;
                                     turnStunned = 0;
                                 } else {
-                                    drawCards(p4,2);
-                                    turn = 1;
+                                    if (pardon == 4) {
+                                        std::cout << "CPU 4 decided to use PARDON card. CPU 4 is IMMUNE to the DRAW 2 effect for this turn!" << std::endl;
+                                        turn = 4;
+                                        pardon = -1;
+                                    } else {
+                                        drawCards(p4,2,pardon);
+                                        turn = 1;
+                                    }
                                 }
                             } else {
                                 if (suceed == 0) {
-                                    drawCards(p2,3);
+                                    drawCards(p2,3,pardon);
                                     turn = 1;
                                     expiredStun(2,lightning,turnStunned);
                                 } else if (suceed == 1) {
@@ -3339,8 +3913,14 @@ int main() {
                                     lightning = 0;
                                     turnStunned = 0;
                                 } else {
-                                    drawCards(p2,2);
-                                    turn = 1;
+                                    if (pardon == 2) {
+                                        std::cout << "CPU 2 decided to use PARDON card. CPU 2 is IMMUNE to the DRAW 2 effect for this turn!" << std::endl;
+                                        turn = 2;
+                                        pardon = -1;
+                                    } else {
+                                        drawCards(p2,2,pardon);
+                                        turn = 1;
+                                    }
                                 }
                             }
                         } else if (startingCard.getFaceCard().getFace().compare("REVERSE") == 0) {
@@ -3363,15 +3943,25 @@ int main() {
                                 turnStunned = 0;
                             } else if (suceed == 0) {
                                 if (clockwise) {
-                                    drawCards(p4,1);
+                                    drawCards(p4,1,pardon);
                                     expiredStun(4,lightning,turnStunned);
                                 } else {
-                                    drawCards(p2,1);
+                                    drawCards(p2,1,pardon);
                                     expiredStun(2,lightning,turnStunned);
                                 }
                                 turn = 1;
                             } else {
-                                turn = 1;
+                                if (clockwise and pardon == 4) {
+                                    std::cout << "CPU 4 decided to use PARDON card. CPU 4 is IMMUNE to the SKIP effect for this turn!" << std::endl;
+                                    turn = 4;
+                                    pardon = -1;
+                                } else if (!clockwise and pardon == 2) {
+                                    std::cout << "CPU 2 decided to use PARDON card. CPU 2 is IMMUNE to the SKIP effect for this turn!" << std::endl;
+                                    turn = 2;
+                                    pardon = -1;
+                                } else {
+                                    turn = 1;
+                                }
                             }
                         }
                     //NUMBER CARDS
@@ -3379,7 +3969,7 @@ int main() {
                         startingCard.changeColorCard(p3.getDeck().getCardAtPos(positioned-1).getColorCard());
                         startingCard.changeFaceCard(p3.getDeck().getCardAtPos(positioned-1).getFaceCard());
                         if (clockwise == false) {
-                            if (lightning == 2) {
+                            if (lightning == 2 and p3.getDeck().getNumberOfCards() != 1) {
                                 bool tookC = true;
                                 coinFlipChallenge(2,suceed,tookC);
                                 if (suceed == 1) {
@@ -3387,7 +3977,7 @@ int main() {
                                     lightning = 0;
                                     turnStunned = 0;
                                 } else if (suceed == 0) {
-                                    drawCards(p2,1);
+                                    drawCards(p2,1,pardon);
                                     turn = 1;
                                     expiredStun(2,lightning,turnStunned);
                                 }
@@ -3396,7 +3986,7 @@ int main() {
                                 turn = 2;
                             }
                         } else {
-                            if (lightning == 4) {
+                            if (lightning == 4 and p3.getDeck().getNumberOfCards() != 1) {
                                 bool tookC = true;
                                 coinFlipChallenge(4,suceed,tookC);
                                 if (suceed == 1) {
@@ -3404,7 +3994,7 @@ int main() {
                                     lightning = 0;
                                     turnStunned = 0;
                                 } else if (suceed == 0) {
-                                    drawCards(p4,1);
+                                    drawCards(p4,1,pardon);
                                     turn = 1;
                                     expiredStun(4,lightning,turnStunned);
                                 }
@@ -3439,51 +4029,63 @@ int main() {
                                 startingCard.changeFaceCard(Face("DRAW4WILD"));
                                 if (clockwise == true) {
                                     if (p3.getDeck().getNumberOfCards() == 1) {
-                                        drawCards(p4,4);
+                                        drawCards(p4,4,pardon);
                                         displayEffect(p4.getToken(),startingCard,suceed);
                                     } else {
                                         if (lightning == 4) {
                                             displayEffect(p4.getToken(),startingCard,suceed,true,lightning);
                                             if (suceed == 0) {
-                                                drawCards(p4,1);
-                                                displayEffect(p4.getToken(),startingCard,suceed);
-                                                drawCards(p4,4);
+                                                drawCards(p4,1,pardon);
+                                                drawCards(p4,4,pardon);
                                                 expiredStun(3,lightning,turnStunned);
-                                            } else {
                                                 turn = 1;
+                                            } else {
+                                                turn = 4;
                                                 lightning = 0;
                                                 turnStunned = 0;
                                             }
                                         } else {
-                                            cpuChallengeDraw4Process(p3,p4,startingCard,turn,numPlay,startColor,suceed);
+                                            if (pardon == 4) {
+                                                std::cout << "CPU 4 decided to use PARDON card. CPU 4 is IMMUNE to the DRAW 4 effect for this turn!" << std::endl;
+                                                turn = 4;
+                                                pardon = -1;
+                                            } else {
+                                                cpuChallengeDraw4Process(p3,p4,startingCard,turn,numPlay,startColor,suceed,pardon);
+                                            }
                                         }
                                     }
                                 } else {
                                     if (p3.getDeck().getNumberOfCards() == 1) {
-                                        drawCards(p2,4);
+                                        drawCards(p2,4,pardon);
                                         displayEffect(p2.getToken(),startingCard,suceed);
                                     } else {
                                         if (lightning == 2) {
                                             displayEffect(p2.getToken(),startingCard,suceed,true,lightning);
                                             if (suceed == 0) {
-                                                drawCards(p2,1);
-                                                displayEffect(p2.getToken(),startingCard,suceed);
-                                                drawCards(p2,4);
+                                                drawCards(p2,1,pardon);
+                                                drawCards(p2,4,pardon);
                                                 expiredStun(2,lightning,turnStunned);
-                                            } else {
                                                 turn = 1;
+                                            } else {
+                                                turn = 2;
                                                 lightning = 0;
                                                 turnStunned = 0;
                                             }
                                         } else {
-                                            cpuChallengeDraw4Process(p3,p2,startingCard,turn,numPlay,startColor,suceed);
+                                            if (pardon == 2) {
+                                                std::cout << "CPU 2 decided to use PARDON card. CPU 2 is IMMUNE to the DRAW 4 effect for this turn!" << std::endl;
+                                                turn = 2;
+                                                pardon = -1;
+                                            } else {
+                                                cpuChallengeDraw4Process(p3,p2,startingCard,turn,numPlay,startColor,suceed,pardon);
+                                            }
                                         }
                                     }
                                 }
                             } else if (p3.getDeck().getCardAtPos(p3.getDeck().getNumberOfCards()-1).getFaceCard().getFace().compare("WILD") == 0){
                                 startingCard.changeFaceCard(Face("WILD"));
                                 if (clockwise == false) {
-                                    if (lightning == 2) {
+                                    if (lightning == 2 and p3.getDeck().getNumberOfCards() != 1) {
                                         bool tookC = true;
                                         coinFlipChallenge(2,suceed,tookC);
                                         if (suceed == 1) {
@@ -3491,7 +4093,7 @@ int main() {
                                             lightning = 0;
                                             turnStunned = 0;
                                         } else if (suceed == 0) {
-                                            drawCards(p2,1);
+                                            drawCards(p2,1,pardon);
                                             turn = 1;
                                             expiredStun(2,lightning,turnStunned);
                                         }
@@ -3500,7 +4102,7 @@ int main() {
                                         turn = 2;
                                     }
                                 } else {
-                                    if (lightning == 4) {
+                                    if (lightning == 4 and p3.getDeck().getNumberOfCards() != 1) {
                                         bool tookC = true;
                                         coinFlipChallenge(4,suceed,tookC);
                                         if (suceed == 1) {
@@ -3508,7 +4110,7 @@ int main() {
                                             lightning = 0;
                                             turnStunned = 0;
                                         } else if (suceed == 0) {
-                                            drawCards(p4,1);
+                                            drawCards(p4,1,pardon);
                                             turn = 1;
                                             expiredStun(4,lightning,turnStunned);
                                         }
@@ -3521,15 +4123,28 @@ int main() {
                                 startingCard.changeFaceCard(Face("LIGHTNING"));
                                 if (lightning == 0 and p3.getDeck().getNumberOfCards() != 1) {
                                     if (clockwise == false) {
-                                        lightning = 2;
-                                        displayEffect(p2.getToken(),startingCard,suceed);
-                                        turn = 1;
+                                        if (pardon == 2) {
+                                            std::cout << "CPU 2 decided to use PARDON card. CPU 2 is IMMUNE to the STUN effect for this turn!" << std::endl;
+                                            turn = 2;
+                                            pardon = -1;
+                                        } else {
+                                            lightning = 2;
+                                            displayEffect(p2.getToken(),startingCard,suceed,true,lightning);
+                                            turn = 1;
+                                            turnStunned = 1;
+                                        }
                                     } else {
-                                        lightning = 4;
-                                        displayEffect(p4.getToken(),startingCard,suceed);
-                                        turn = 1;
+                                        if (pardon == 4) {
+                                            std::cout << "CPU 4 decided to use PARDON card. CPU 4 is IMMUNE to the STUN effect for this turn!" << std::endl;
+                                            turn = 4;
+                                            pardon = -1;
+                                        } else {
+                                            lightning = 4;
+                                            displayEffect(p4.getToken(),startingCard,suceed,true,lightning);
+                                            turn = 1;
+                                            turnStunned = 1;
+                                        }
                                     }
-                                    turnStunned = 1;
                                 } else {
                                     if (p3.getDeck().getNumberOfCards() == 1) {
                                         std::cout << "Last card of the game! Now treated as standard WILD card. " << std::endl;
@@ -3544,7 +4159,7 @@ int main() {
                                                     lightning = 0;
                                                     turnStunned = 0;
                                                 } else if (suceed == 0) {
-                                                    drawCards(p2,1);
+                                                    drawCards(p2,1,pardon);
                                                     turn = 1;
                                                     expiredStun(2,lightning,turnStunned);
                                                 }
@@ -3561,7 +4176,7 @@ int main() {
                                                     lightning = 0;
                                                     turnStunned = 0;
                                                 } else if (suceed == 0) {
-                                                    drawCards(p4,1);
+                                                    drawCards(p4,1,pardon);
                                                     turn = 1;
                                                     expiredStun(4,lightning,turnStunned);
                                                 }
@@ -3581,19 +4196,37 @@ int main() {
                                 if (p3.getDeck().getNumberOfCards() == 1) {
                                     displayEffect(p4.getToken(),startingCard,suceed,true,0);
                                 } else {
-                                    displayEffect(p4.getToken(),startingCard,suceed,true,lightning);
+                                    if (lightning != 4 and p3.getDeck().getCardAtPos(p3.getDeck().getNumberOfCards()-1).getFaceCard().getFace().compare("REVERSE") != 0) {
+                                        if (pardon == 4) {
+                                            turn = 4;
+                                            pardon = -1;
+                                        } else {
+                                            displayEffect(p4.getToken(),startingCard,suceed,true,lightning);
+                                        }
+                                    } else {
+                                        displayEffect(p4.getToken(),startingCard,suceed,true,lightning);
+                                    }
                                 }
                             } else {
                                 if (p3.getDeck().getNumberOfCards() == 1) {
                                     displayEffect(p2.getToken(),startingCard,suceed,true,0);
                                 } else {
-                                    displayEffect(p2.getToken(),startingCard,suceed,true,lightning);
+                                    if (lightning != 2 and p3.getDeck().getCardAtPos(p3.getDeck().getNumberOfCards()-1).getFaceCard().getFace().compare("REVERSE") != 0) {
+                                        if (pardon == 2) {
+                                            turn = 2;
+                                            pardon = -1;
+                                        } else {
+                                            displayEffect(p2.getToken(),startingCard,suceed,true,lightning);
+                                        }
+                                    } else {
+                                        displayEffect(p2.getToken(),startingCard,suceed,true,lightning);
+                                    }
                                 }
                             }
                             if (startingCard.getFaceCard().getFace().compare("DRAW2") == 0) {
                                 if (clockwise == true) {
                                     if (suceed == 0) {
-                                        drawCards(p4,3);
+                                        drawCards(p4,3,pardon);
                                         turn = 1;
                                         expiredStun(4,lightning,turnStunned);
                                     } else if (suceed == 1) {
@@ -3601,12 +4234,18 @@ int main() {
                                         lightning = 0;
                                         turnStunned = 0;
                                     } else {
-                                        drawCards(p4,2);
-                                        turn = 1;
+                                        if (pardon == 4) {
+                                            std::cout << "CPU 4 decided to use PARDON card. CPU 4 is IMMUNE to the DRAW 2 effect for this turn!" << std::endl;
+                                            turn = 4;
+                                            pardon = -1;
+                                        } else {
+                                            drawCards(p4,2,pardon);
+                                            turn = 1;
+                                        }
                                     }
                                 } else {
                                     if (suceed == 0) {
-                                        drawCards(p2,3);
+                                        drawCards(p2,3,pardon);
                                         turn = 1;
                                         expiredStun(2,lightning,turnStunned);
                                     } else if (suceed == 1) {
@@ -3614,16 +4253,24 @@ int main() {
                                         lightning = 0;
                                         turnStunned = 0;
                                     } else {
-                                        drawCards(p2,2);
-                                        turn = 1;
+                                        if (pardon == 2) {
+                                            std::cout << "CPU 2 decided to use PARDON card. CPU 2 is IMMUNE to the DRAW 2 effect for this turn!" << std::endl;
+                                            turn = 2;
+                                            pardon = -1;
+                                        } else {
+                                            drawCards(p2,2,pardon);
+                                            turn = 1;
+                                        }
                                     }
                                 }
                             } else if (startingCard.getFaceCard().getFace().compare("REVERSE") == 0) {
-                                clockwise = !clockwise;
-                                if (clockwise == true) {
-                                    turn = 4;
-                                } else {
-                                    turn = 2;
+                                if (numPlay == 4) {
+                                    clockwise = !clockwise;
+                                    if (clockwise == true) {
+                                        turn = 4;
+                                    } else {
+                                        turn = 2;
+                                    }
                                 }
                             } else if (startingCard.getFaceCard().getFace().compare("SKIP") == 0) {
                                 if (suceed == 1) {
@@ -3636,15 +4283,25 @@ int main() {
                                     turnStunned = 0;
                                 } else if (suceed == 0) {
                                     if (clockwise) {
-                                        drawCards(p4,1);
+                                        drawCards(p4,1,pardon);
                                         expiredStun(4,lightning,turnStunned);
                                     } else {
-                                        drawCards(p2,1);
+                                        drawCards(p2,1,pardon);
                                         expiredStun(2,lightning,turnStunned);
                                     }
                                     turn = 1;
                                 } else {
-                                    turn = 1;
+                                    if (clockwise and pardon == 4) {
+                                        std::cout << "CPU 4 decided to use PARDON card. CPU 4 is IMMUNE to the SKIP effect for this turn!" << std::endl;
+                                        turn = 4;
+                                        pardon = -1;
+                                    } else if (!clockwise and pardon == 2) {
+                                        std::cout << "CPU 2 decided to use PARDON card. CPU 2 is IMMUNE to the SKIP effect for this turn!" << std::endl;
+                                        turn = 2;
+                                        pardon = -1;
+                                    } else {
+                                        turn = 1;
+                                    }
                                 }
                             }
                         //number cards
@@ -3652,7 +4309,7 @@ int main() {
                             startingCard.changeColorCard(p3.getDeck().getCardAtPos(p3.getDeck().getNumberOfCards()-1).getColorCard());
                             startingCard.changeFaceCard(p3.getDeck().getCardAtPos(p3.getDeck().getNumberOfCards()-1).getFaceCard());
                             if (clockwise == false) {
-                                if (lightning == 2) {
+                                if (lightning == 2 and p3.getDeck().getNumberOfCards() != 1) {
                                     bool tookC = true;
                                     coinFlipChallenge(2,suceed,tookC);
                                     if (suceed == 1) {
@@ -3660,7 +4317,7 @@ int main() {
                                         lightning = 0;
                                         turnStunned = 0;
                                     } else if (suceed == 0) {
-                                        drawCards(p2,1);
+                                        drawCards(p2,1,pardon);
                                         turn = 1;
                                         expiredStun(2,lightning,turnStunned);
                                     }
@@ -3669,7 +4326,7 @@ int main() {
                                     turn = 2;
                                 }
                             } else {
-                                if (lightning == 4) {
+                                if (lightning == 4 and p3.getDeck().getNumberOfCards() != 1) {
                                     bool tookC = true;
                                     coinFlipChallenge(4,suceed,tookC);
                                     if (suceed == 1) {
@@ -3677,7 +4334,7 @@ int main() {
                                         lightning = 0;
                                         turnStunned = 0;
                                     } else if (suceed == 0) {
-                                        drawCards(p4,1);
+                                        drawCards(p4,1,pardon);
                                         turn = 1;
                                         expiredStun(4,lightning,turnStunned);
                                     }
@@ -3693,7 +4350,7 @@ int main() {
                         }
                     } else {
                         if (clockwise == false) {
-                            if (lightning == 2) {
+                            if (lightning == 2 and p3.getDeck().getNumberOfCards() != 1) {
                                 bool tookC = true;
                                 coinFlipChallenge(2,suceed,tookC);
                                 if (suceed == 1) {
@@ -3701,7 +4358,7 @@ int main() {
                                     lightning = 0;
                                     turnStunned = 0;
                                 } else if (suceed == 0) {
-                                    drawCards(p2,1);
+                                    drawCards(p2,1,pardon);
                                     turn = 1;
                                     expiredStun(2,lightning,turnStunned);
                                 }
@@ -3710,7 +4367,7 @@ int main() {
                                 turn = 2;
                             }
                         } else {
-                            if (lightning == 4) {
+                            if (lightning == 4 and p3.getDeck().getNumberOfCards() != 1) {
                                 bool tookC = true;
                                 coinFlipChallenge(4,suceed,tookC);
                                 if (suceed == 1) {
@@ -3718,7 +4375,7 @@ int main() {
                                     lightning = 0;
                                     turnStunned = 0;
                                 } else if (suceed == 0) {
-                                    drawCards(p4,1);
+                                    drawCards(p4,1,pardon);
                                     turn = 1;
                                     expiredStun(4,lightning,turnStunned);
                                 }
@@ -3741,7 +4398,7 @@ int main() {
                 sleep_for(seconds(2));
             //CPU 4 turn
             } else {
-                verifyUNOs(shoutedUno1,p1,c1); 
+                verifyUNOs(shoutedUno1,p1,c1,pardon); 
                 if (p1.getDeck().getNumberOfCards() >= 2) {
                     shoutedUno1 = false;
                     c1 = 0;
@@ -3755,7 +4412,7 @@ int main() {
                         turnStunned = 0;
                         sleep_for(seconds(3));
                     } else if (suceed == 0) {
-                        drawCards(p4,1);
+                        drawCards(p4,1,pardon);
                         if (clockwise) {
                             turn = 1;
                         } else {
@@ -3794,51 +4451,70 @@ int main() {
                             startingCard.changeFaceCard(Face("DRAW4WILD"));
                             if (clockwise == true) {
                                 if (p4.getDeck().getNumberOfCards() == 1) {
-                                    drawCards(p1,4);
+                                    drawCards(p1,4,pardon);
                                     displayEffect(p1.getToken(),startingCard,suceed);
                                 } else {
                                     if (lightning == 1) {
                                         displayEffect(p1.getToken(),startingCard,suceed,true,lightning);
                                         if (suceed == 0) {
-                                            drawCards(p1,1);
-                                            displayEffect(p1.getToken(),startingCard,suceed);
-                                            drawCards(p1,4);
+                                            drawCards(p1,1,pardon);
+                                            drawCards(p1,4,pardon);
                                             expiredStun(1,lightning,turnStunned);
+                                            turn = 2;
                                         } else {
                                             turn = 1;
                                             lightning = 0;
                                             turnStunned = 0;
                                         }
                                     } else {
-                                        playerChallengeDraw4Process(p4,p1,startingCard,turn,numPlay,startColor,suceed);
+                                        if (pardon == 1) {
+                                            std::cout << "Do you wish to use your PARDON card on the DRAW4WILD played on you? (Y/N): ";
+                                            std::string played;
+                                            std::cin >> played;
+                                            if (played == "Y") {
+                                                std::cout << "You decided to use PARDON card. You are IMMUNE to the DRAW 4 effect for this turn!" << std::endl;
+                                                turn = 1;
+                                                pardon = -1;
+                                            } else {
+                                                playerChallengeDraw4Process(p4,p1,startingCard,turn,numPlay,startColor,suceed,pardon);
+                                            }
+                                        } else {
+                                            playerChallengeDraw4Process(p4,p1,startingCard,turn,numPlay,startColor,suceed,pardon);
+                                        }
                                     }
                                 }
                             } else {
                                 if (p4.getDeck().getNumberOfCards() == 1) {
-                                    drawCards(p3,4);
+                                    drawCards(p3,4,pardon);
                                     displayEffect(p3.getToken(),startingCard,suceed);
                                 } else {
                                     if (lightning == 3) {
                                         displayEffect(p3.getToken(),startingCard,suceed,true,lightning);
                                         if (suceed == 0) {
-                                            drawCards(p3,1);
-                                            displayEffect(p3.getToken(),startingCard,suceed);
-                                            drawCards(p3,4);
+                                            drawCards(p3,1,pardon);
+                                            drawCards(p3,4,pardon);
                                             expiredStun(3,lightning,turnStunned);
+                                            turn = 2;
                                         } else {
                                             turn = 3;
                                             lightning = 0;
                                             turnStunned = 0;
                                         }
                                     } else {
-                                        cpuChallengeDraw4Process(p4,p3,startingCard,turn,numPlay,startColor,suceed);
+                                        if (pardon == 3) {
+                                            std::cout << "CPU 3 decided to use PARDON card. CPU 3 is IMMUNE to the DRAW 4 effect for this turn!" << std::endl;
+                                            turn = 3;
+                                            pardon = -1;
+                                        } else {
+                                            cpuChallengeDraw4Process(p4,p3,startingCard,turn,numPlay,startColor,suceed,lightning);
+                                        }
                                     }
                                 }
                             }
                         } else if (p4.getDeck().getCardAtPos(positioned-1).getFaceCard().getFace().compare("WILD") == 0){
                             startingCard.changeFaceCard(Face("WILD"));
                             if (clockwise == true) {
-                                if (lightning == 1) {
+                                if (lightning == 1 and p4.getDeck().getNumberOfCards() != 1) {
                                     bool tookC = true;
                                     coinFlipChallenge(1,suceed,tookC);
                                     if (tookC == false) {
@@ -3852,7 +4528,7 @@ int main() {
                                             lightning = 0;
                                             turnStunned = 0;
                                         } else {
-                                            drawCards(p1,1);
+                                            drawCards(p1,1,pardon);
                                             turn = 2;
                                             expiredStun(1,lightning,turnStunned);
                                         }
@@ -3862,7 +4538,7 @@ int main() {
                                     turn = 1;
                                 }
                             } else {
-                                if (lightning == 3) {
+                                if (lightning == 3 and p4.getDeck().getNumberOfCards() != 1) {
                                     bool tookC = true;
                                     coinFlipChallenge(3,suceed,tookC);
                                     if (suceed == 1) {
@@ -3870,7 +4546,7 @@ int main() {
                                         lightning = 0;
                                         turnStunned = 0;
                                     } else if (suceed == 0) {
-                                        drawCards(p4,1);
+                                        drawCards(p4,1,pardon);
                                         turn = 3;
                                         expiredStun(4,lightning,turnStunned);
                                     }
@@ -3883,15 +4559,38 @@ int main() {
                             startingCard.changeFaceCard(Face("LIGHTNING"));
                             if (lightning == 0 and p4.getDeck().getNumberOfCards() != 1) {
                                 if (clockwise == false) {
-                                    lightning = 3;
-                                    displayEffect(p3.getToken(),startingCard,suceed);
-                                    turn = 2;
+                                    if (pardon == 3) {
+                                        std::cout << "CPU 3 decided to use PARDON card. CPU 3 is IMMUNE to the STUN effect for this turn!" << std::endl;
+                                        turn = 3;
+                                        pardon = -1;
+                                    } else {
+                                        lightning = 3;
+                                        displayEffect(p3.getToken(),startingCard,suceed);
+                                        turn = 2;
+                                        turnStunned = 1;
+                                    }
                                 } else {
-                                    lightning = 1;
-                                    displayEffect(p1.getToken(),startingCard,suceed);
-                                    turn = 2;
+                                    if (pardon == 1) {
+                                        std::cout << "Do you wish to use your PARDON card on the LIGHTNING card played on you? (Y/N): ";
+                                        std::string played;
+                                        std::cin >> played;
+                                        if (played == "Y") {
+                                            std::cout << "You decided to use PARDON card. You are IMMUNE to the STUN effect for this turn!" << std::endl;
+                                            turn = 1;
+                                            pardon = -1;
+                                        } else {
+                                            lightning = 1;
+                                            displayEffect(p1.getToken(),startingCard,suceed);
+                                            turn = 2;
+                                            turnStunned = 1;
+                                        }
+                                    } else {
+                                        lightning = 1;
+                                        displayEffect(p1.getToken(),startingCard,suceed);
+                                        turn = 2;
+                                        turnStunned = 1;
+                                    }  
                                 }
-                                turnStunned = 1;
                             } else {
                                 if (p4.getDeck().getNumberOfCards() == 1) {
                                     std::cout << "Last card of the game! Now treated as standard WILD card. " << std::endl;
@@ -3912,7 +4611,7 @@ int main() {
                                                     lightning = 0;
                                                     turnStunned = 0;
                                                 } else {
-                                                    drawCards(p1,1);
+                                                    drawCards(p1,1,pardon);
                                                     turn = 2;
                                                     expiredStun(1,lightning,turnStunned);
                                                 }
@@ -3930,7 +4629,7 @@ int main() {
                                                 lightning = 0;
                                                 turnStunned = 0;
                                             } else if (suceed == 0) {
-                                                drawCards(p4,1);
+                                                drawCards(p4,1,pardon);
                                                 turn = 3;
                                                 expiredStun(4,lightning,turnStunned);
                                             }
@@ -3950,31 +4649,63 @@ int main() {
                             if (p4.getDeck().getNumberOfCards() == 1) {
                                 displayEffect(p1.getToken(),startingCard,suceed,true,0);
                             } else {
-                                displayEffect(p1.getToken(),startingCard,suceed,true,lightning);
+                                if (lightning != 1 and p4.getDeck().getCardAtPos(positioned-1).getFaceCard().getFace().compare("REVERSE") != 0) {
+                                    if (pardon == 1) {
+                                        turn = 1;
+                                    } else {
+                                        displayEffect(p1.getToken(),startingCard,suceed,true,lightning);
+                                    }
+                                } else {
+                                    displayEffect(p1.getToken(),startingCard,suceed,true,lightning);
+                                }
                             }
                         } else {
                             if (p4.getDeck().getNumberOfCards() == 1) {
                                 displayEffect(p3.getToken(),startingCard,suceed,true,0);
                             } else {
-                                displayEffect(p3.getToken(),startingCard,suceed,true,lightning);
+                                if (lightning != 3 and p4.getDeck().getCardAtPos(positioned-1).getFaceCard().getFace().compare("REVERSE") != 0) {
+                                    if (pardon == 3) {
+                                        turn = 3;
+                                    } else {
+                                        displayEffect(p3.getToken(),startingCard,suceed,true,lightning);
+                                    }
+                                } else {
+                                    displayEffect(p3.getToken(),startingCard,suceed,true,lightning);
+                                }
                             }
                         }
                         if (startingCard.getFaceCard().getFace().compare("DRAW2") == 0) {
                             if (clockwise == true) {
                                 if (suceed == 0) {
-                                    drawCards(p1,3);
+                                    drawCards(p1,3,pardon);
                                     turn = 2;
                                     expiredStun(1,lightning,turnStunned);
                                 } else if (suceed == 1) {
                                     turn = 1;
                                     lightning = 0;
                                 } else {
-                                    drawCards(p1,2);
-                                    turn = 2;
+                                    if (pardon == 1) {
+                                        std::cout << "Do you wish to use your PARDON card on the DRAW 2 played on you? (Y/N): ";
+                                        std::string played;
+                                        std::cin >> played;
+                                        if (played == "Y") {
+                                            std::cout << "You decided to use PARDON card. You are IMMUNE to the DRAW 2 effect for this turn!" << std::endl;
+                                            turn = 1;
+                                            pardon = -1;
+                                        } else {
+                                            drawCards(p1,2,pardon);
+                                            turn = 2;
+                                            displayEffect(p1.getToken(),startingCard,suceed,true,lightning);
+                                        }
+                                    } else {
+                                        drawCards(p1,2,pardon);
+                                        turn = 2;
+                                        displayEffect(p1.getToken(),startingCard,suceed,true,lightning);
+                                    }
                                 }
                             } else {
                                 if (suceed == 0) {
-                                    drawCards(p3,3);
+                                    drawCards(p3,3,pardon);
                                     turn = 2;
                                     expiredStun(3,lightning,turnStunned);
                                 } else if (suceed == 1) {
@@ -3982,8 +4713,14 @@ int main() {
                                     lightning = 0;
                                     turnStunned = 0;
                                 } else {
-                                    drawCards(p3,2);
-                                    turn = 2;
+                                    if (pardon == 3) {
+                                        std::cout << "CPU 3 decided to use PARDON card. CPU 3 is IMMUNE to the DRAW 2 effect for this turn!" << std::endl;
+                                        turn = 3;
+                                        pardon = -1;
+                                    } else {
+                                        drawCards(p3,2,pardon);
+                                        turn = 2;
+                                    }
                                 }
                             }
                         } else if (startingCard.getFaceCard().getFace().compare("REVERSE") == 0) {
@@ -4003,15 +4740,33 @@ int main() {
                                 }
                             } else if (suceed == 0) {
                                 if (clockwise) {
-                                    drawCards(p1,1);
+                                    drawCards(p1,1,pardon);
                                     expiredStun(1,lightning,turnStunned);
                                 } else {
-                                    drawCards(p3,1);
+                                    drawCards(p3,1,pardon);
                                     expiredStun(3,lightning,turnStunned);
                                 }
                                 turn = 2;
                             } else {
-                                turn = 2;
+                                if (pardon == 1 and clockwise) {
+                                    std::cout << "Do you wish to use your PARDON card on the SKIP played on you? (Y/N): ";
+                                    std::string played;
+                                    std::cin >> played;
+                                    if (played == "Y") {
+                                        std::cout << "You decided to use PARDON card. You are IMMUNE to the SKIP effect for this turn!" << std::endl;
+                                        turn = 1;
+                                        pardon = -1;
+                                    } else {
+                                        turn = 2;
+                                        displayEffect(p1.getToken(),startingCard,suceed,true,lightning);
+                                    }
+                                } else if (pardon == 3 and !clockwise) {
+                                    std::cout << "CPU 3 decided to use PARDON card. CPU 3 is IMMUNE to the SKIP effect for this turn!" << std::endl;
+                                    turn = 3;
+                                    pardon = -1;
+                                } else {
+                                    turn = 2;
+                                }
                             }
                         }
                     //number card
@@ -4019,7 +4774,7 @@ int main() {
                         startingCard.changeColorCard(p4.getDeck().getCardAtPos(positioned-1).getColorCard());
                         startingCard.changeFaceCard(p4.getDeck().getCardAtPos(positioned-1).getFaceCard());
                         if (clockwise == false) {
-                            if (lightning == 3) {
+                            if (lightning == 3 and p4.getDeck().getNumberOfCards() != 1) {
                                 bool tookC = true;
                                 coinFlipChallenge(3,suceed,tookC);
                                 if (suceed == 1) {
@@ -4027,7 +4782,7 @@ int main() {
                                     lightning = 0;
                                     turnStunned = 0;
                                 } else if (suceed == 0) {
-                                    drawCards(p4,1);
+                                    drawCards(p4,1,pardon);
                                     turn = 3;
                                     expiredStun(4,lightning,turnStunned);
                                 }
@@ -4036,7 +4791,7 @@ int main() {
                                 turn = 3;
                             }
                         } else {
-                            if (lightning == 1) {
+                            if (lightning == 1 and p4.getDeck().getNumberOfCards() != 1) {
                                 bool tookC = true;
                                 coinFlipChallenge(1,suceed,tookC);
                                 if (tookC == false) {
@@ -4050,7 +4805,7 @@ int main() {
                                         lightning = 0;
                                         turnStunned = 0;
                                     } else {
-                                        drawCards(p1,1);
+                                        drawCards(p1,1,pardon);
                                         turn = 2;
                                         expiredStun(1,lightning,turnStunned);
                                     }
@@ -4086,36 +4841,49 @@ int main() {
                                 startingCard.changeFaceCard(Face("DRAW4WILD"));
                                 if (clockwise == true) {
                                     if (p4.getDeck().getNumberOfCards() == 1) {
-                                        drawCards(p1,4);
+                                        drawCards(p1,4,pardon);
                                         displayEffect(p1.getToken(),startingCard,suceed);
                                     } else {
                                         if (lightning == 1) {
                                             displayEffect(p1.getToken(),startingCard,suceed,true,lightning);
                                             if (suceed == 0) {
-                                                drawCards(p1,1);
-                                                displayEffect(p1.getToken(),startingCard,suceed);
-                                                drawCards(p1,4);
+                                                drawCards(p1,1,pardon);
+                                                drawCards(p1,4,pardon);
                                                 expiredStun(1,lightning,turnStunned);
+                                                turn = 2;
                                             } else {
                                                 turn = 1;
                                                 lightning = 0;
                                                 turnStunned = 0;
                                             }
                                         } else {
-                                            playerChallengeDraw4Process(p4,p1,startingCard,turn,numPlay,startColor,suceed);
+                                            if (pardon == 1) {
+                                                std::cout << "Do you wish to use your PARDON card on the DRAW4WILD played on you? (Y/N): ";
+                                                std::string played;
+                                                std::cin >> played;
+                                                if (played == "Y") {
+                                                    std::cout << "You decided to use PARDON card. You are IMMUNE to the DRAW 4 effect for this turn!" << std::endl;
+                                                    turn = 1;
+                                                    pardon = -1;
+                                                } else {
+                                                    playerChallengeDraw4Process(p4,p1,startingCard,turn,numPlay,startColor,suceed,pardon);
+                                                }
+                                            } else {
+                                                playerChallengeDraw4Process(p4,p1,startingCard,turn,numPlay,startColor,suceed,pardon);
+                                            }
                                         }
                                     }
                                 } else {
                                     if (p4.getDeck().getNumberOfCards() == 1) {
-                                        drawCards(p3,4);
+                                        drawCards(p3,4,pardon);
                                         displayEffect(p3.getToken(),startingCard,suceed);
                                     } else {
                                         if (lightning == 3) {
                                             displayEffect(p3.getToken(),startingCard,suceed,true,lightning);
                                             if (suceed == 0) {
-                                                drawCards(p3,1);
-                                                displayEffect(p3.getToken(),startingCard,suceed);
-                                                drawCards(p3,4);
+                                                drawCards(p3,1,pardon);
+                                                drawCards(p3,4,pardon);
+                                                turn = 2;
                                                 expiredStun(3,lightning,turnStunned);
                                             } else {
                                                 turn = 3;
@@ -4123,14 +4891,20 @@ int main() {
                                                 turnStunned = 0;
                                             }
                                         } else {
-                                            cpuChallengeDraw4Process(p4,p3,startingCard,turn,numPlay,startColor,suceed);
+                                            if (pardon == 3) {
+                                                std::cout << "CPU 3 decided to use PARDON card. CPU 3 is IMMUNE to the DRAW 4 effect for this turn!" << std::endl;
+                                                turn = 3;
+                                                pardon = -1;
+                                            } else {
+                                                cpuChallengeDraw4Process(p4,p3,startingCard,turn,numPlay,startColor,suceed,lightning);
+                                            }
                                         }
                                     }
                                 }
                             } else if (p4.getDeck().getCardAtPos(p4.getDeck().getNumberOfCards()-1).getFaceCard().getFace().compare("WILD") == 0){
                                 startingCard.changeFaceCard(Face("WILD"));
                                 if (clockwise == true) {
-                                    if (lightning == 1) {
+                                    if (lightning == 1 and p4.getDeck().getNumberOfCards() != 1) {
                                         bool tookC = true;
                                         coinFlipChallenge(1,suceed,tookC);
                                         if (tookC == false) {
@@ -4144,7 +4918,7 @@ int main() {
                                                 lightning = 0;
                                                 turnStunned = 0;
                                             } else {
-                                                drawCards(p1,1);
+                                                drawCards(p1,1,pardon);
                                                 turn = 2;
                                                 expiredStun(1,lightning,turnStunned);
                                             }
@@ -4154,7 +4928,7 @@ int main() {
                                         turn = 1;
                                     }
                                 } else {
-                                    if (lightning == 3) {
+                                    if (lightning == 3 and p4.getDeck().getNumberOfCards() != 1) {
                                         bool tookC = true;
                                         coinFlipChallenge(3,suceed,tookC);
                                         if (suceed == 1) {
@@ -4162,7 +4936,7 @@ int main() {
                                             lightning = 0;
                                             turnStunned = 0;
                                         } else if (suceed == 0) {
-                                            drawCards(p4,1);
+                                            drawCards(p4,1,pardon);
                                             turn = 3;
                                             expiredStun(4,lightning,turnStunned);
                                         }
@@ -4175,15 +4949,38 @@ int main() {
                                 startingCard.changeFaceCard(Face("LIGHTNING"));
                                 if (lightning == 0 and p4.getDeck().getNumberOfCards() != 1) {
                                     if (clockwise == false) {
-                                        lightning = 3;
-                                        displayEffect(p3.getToken(),startingCard,suceed);
-                                        turn = 2;
+                                        if (pardon == 3) {
+                                            std::cout << "CPU 3 decided to use PARDON card. CPU 3 is IMMUNE to the STUN effect for this turn!" << std::endl;
+                                            turn = 3;
+                                            pardon = -1;
+                                        } else {
+                                            lightning = 3;
+                                            displayEffect(p3.getToken(),startingCard,suceed);
+                                            turn = 2;
+                                            turnStunned = 1;
+                                        }
                                     } else {
-                                        lightning = 1;
-                                        displayEffect(p1.getToken(),startingCard,suceed);
-                                        turn = 2;
+                                        if (pardon == 1) {
+                                            std::cout << "Do you wish to use your PARDON card on the LIGHTNING card played on you? (Y/N): ";
+                                            std::string played;
+                                            std::cin >> played;
+                                            if (played == "Y") {
+                                                std::cout << "You decided to use PARDON card. You are IMMUNE to the STUN effect for this turn!" << std::endl;
+                                                turn = 1;
+                                                pardon = -1;
+                                            } else {
+                                                lightning = 1;
+                                                displayEffect(p1.getToken(),startingCard,suceed);
+                                                turn = 2;
+                                                turnStunned = 1;
+                                            }
+                                        } else {
+                                            lightning = 1;
+                                            displayEffect(p1.getToken(),startingCard,suceed);
+                                            turn = 2;
+                                            turnStunned = 1;
+                                        }
                                     }
-                                    turnStunned = 1;
                                 } else {
                                     if (p4.getDeck().getNumberOfCards() == 1) {
                                         std::cout << "Last card of the game! Now treated as standard WILD card. " << std::endl;
@@ -4204,7 +5001,7 @@ int main() {
                                                         lightning = 0;
                                                         turnStunned = 0;
                                                     } else {
-                                                        drawCards(p1,1);
+                                                        drawCards(p1,1,pardon);
                                                         turn = 2;
                                                         expiredStun(1,lightning,turnStunned);
                                                     }
@@ -4222,7 +5019,7 @@ int main() {
                                                     lightning = 0;
                                                     turnStunned = 0;
                                                 } else if (suceed == 0) {
-                                                    drawCards(p4,1);
+                                                    drawCards(p4,1,pardon);
                                                     turn = 3;
                                                     expiredStun(4,lightning,turnStunned);
                                                 }
@@ -4242,32 +5039,63 @@ int main() {
                                 if (p4.getDeck().getNumberOfCards() == 1) {
                                     displayEffect(p1.getToken(),startingCard,suceed,true,0);
                                 } else {
-                                    displayEffect(p1.getToken(),startingCard,suceed,true,lightning);
+                                    if (lightning != 1 and p4.getDeck().getCardAtPos(p4.getDeck().getNumberOfCards()-1).getFaceCard().getFace().compare("REVERSE") != 0) {
+                                        if (pardon == 1) {
+                                            turn = 1;
+                                        } else {
+                                            displayEffect(p1.getToken(),startingCard,suceed,true,lightning);
+                                        }
+                                    } else {
+                                        displayEffect(p1.getToken(),startingCard,suceed,true,lightning);
+                                    }
                                 }
                             } else {
                                 if (p4.getDeck().getNumberOfCards() == 1) {
                                     displayEffect(p3.getToken(),startingCard,suceed,true,0);
                                 } else {
-                                    displayEffect(p3.getToken(),startingCard,suceed,true,lightning);
+                                    if (lightning != 3 and p4.getDeck().getCardAtPos(p4.getDeck().getNumberOfCards()-1).getFaceCard().getFace().compare("REVERSE") != 0) {
+                                        if (pardon == 3) {
+                                            turn = 3;
+                                        } else {
+                                            displayEffect(p3.getToken(),startingCard,suceed,true,lightning);
+                                        }
+                                    } else {
+                                        displayEffect(p3.getToken(),startingCard,suceed,true,lightning);
+                                    }
                                 }
                             }
                             if (startingCard.getFaceCard().getFace().compare("DRAW2") == 0) {
                                 if (clockwise == true) {
                                     if (suceed == 0) {
-                                        drawCards(p1,3);
+                                        drawCards(p1,3,pardon);
                                         turn = 2;
                                         expiredStun(1,lightning,turnStunned);
                                     } else if (suceed == 1) {
                                         turn = 1;
                                         lightning = 0;
-                                        turnStunned = 0;
                                     } else {
-                                        drawCards(p1,2);
-                                        turn = 2;
+                                        if (pardon == 1) {
+                                            std::cout << "Do you wish to use your PARDON card on the DRAW 2 played on you? (Y/N): ";
+                                            std::string played;
+                                            std::cin >> played;
+                                            if (played == "Y") {
+                                                std::cout << "You decided to use PARDON card. You are IMMUNE to the DRAW 2 effect for this turn!" << std::endl;
+                                                turn = 1;
+                                                pardon = -1;
+                                            } else {
+                                                drawCards(p1,2,pardon);
+                                                turn = 2;
+                                                displayEffect(p1.getToken(),startingCard,suceed,true,lightning);
+                                            }
+                                        } else {
+                                            drawCards(p1,2,pardon);
+                                            turn = 2;
+                                            displayEffect(p1.getToken(),startingCard,suceed,true,lightning);
+                                        }
                                     }
                                 } else {
                                     if (suceed == 0) {
-                                        drawCards(p3,3);
+                                        drawCards(p3,3,pardon);
                                         turn = 2;
                                         expiredStun(3,lightning,turnStunned);
                                     } else if (suceed == 1) {
@@ -4275,8 +5103,14 @@ int main() {
                                         lightning = 0;
                                         turnStunned = 0;
                                     } else {
-                                        drawCards(p3,2);
-                                        turn = 2;
+                                        if (pardon == 3) {
+                                            std::cout << "CPU 3 decided to use PARDON card. CPU 3 is IMMUNE to the DRAW 2 effect for this turn!" << std::endl;
+                                            turn = 3;
+                                            pardon = -1;
+                                        } else {
+                                            drawCards(p3,2,pardon);
+                                            turn = 2;
+                                        }
                                     }
                                 }
                             } else if (startingCard.getFaceCard().getFace().compare("REVERSE") == 0) {
@@ -4289,7 +5123,6 @@ int main() {
                             } else if (startingCard.getFaceCard().getFace().compare("SKIP") == 0) {
                                 if (suceed == 1) {
                                     lightning = 0;
-                                    turnStunned = 0;
                                     if (clockwise) {
                                         turn = 1;
                                     } else {
@@ -4297,15 +5130,33 @@ int main() {
                                     }
                                 } else if (suceed == 0) {
                                     if (clockwise) {
-                                        drawCards(p1,1);
+                                        drawCards(p1,1,pardon);
                                         expiredStun(1,lightning,turnStunned);
                                     } else {
-                                        drawCards(p3,1);
+                                        drawCards(p3,1,pardon);
                                         expiredStun(3,lightning,turnStunned);
                                     }
                                     turn = 2;
                                 } else {
-                                    turn = 2;
+                                    if (pardon == 1 and clockwise) {
+                                        std::cout << "Do you wish to use your PARDON card on the SKIP played on you? (Y/N): ";
+                                        std::string played;
+                                        std::cin >> played;
+                                        if (played == "Y") {
+                                            std::cout << "You decided to use PARDON card. You are IMMUNE to the SKIP effect for this turn!" << std::endl;
+                                            turn = 1;
+                                            pardon = -1;
+                                        } else {
+                                            turn = 2;
+                                            displayEffect(p1.getToken(),startingCard,suceed,true,lightning);
+                                        }
+                                    } else if (pardon == 3 and !clockwise) {
+                                        std::cout << "CPU 3 decided to use PARDON card. CPU 3 is IMMUNE to the SKIP effect for this turn!" << std::endl;
+                                        turn = 3;
+                                        pardon = -1;
+                                    } else {
+                                        turn = 2;
+                                    }
                                 }
                             }
                             //number
@@ -4313,7 +5164,7 @@ int main() {
                             startingCard.changeColorCard(p4.getDeck().getCardAtPos(p4.getDeck().getNumberOfCards()-1).getColorCard());
                             startingCard.changeFaceCard(p4.getDeck().getCardAtPos(p4.getDeck().getNumberOfCards()-1).getFaceCard());
                             if (clockwise == false) {
-                                if (lightning == 3) {
+                                if (lightning == 3 and p4.getDeck().getNumberOfCards() != 1) {
                                     bool tookC = true;
                                     coinFlipChallenge(3,suceed,tookC);
                                     if (suceed == 1) {
@@ -4321,7 +5172,7 @@ int main() {
                                         lightning = 0;
                                         turnStunned = 0;
                                     } else if (suceed == 0) {
-                                        drawCards(p4,1);
+                                        drawCards(p4,1,pardon);
                                         turn = 3;
                                         expiredStun(4,lightning,turnStunned);
                                     }
@@ -4330,7 +5181,7 @@ int main() {
                                     turn = 3;
                                 }
                             } else {
-                                if (lightning == 1) {
+                                if (lightning == 1 and p4.getDeck().getNumberOfCards() != 1) {
                                     bool tookC = true;
                                     coinFlipChallenge(1,suceed,tookC);
                                     if (tookC == false) {
@@ -4344,7 +5195,7 @@ int main() {
                                             lightning = 0;
                                             turnStunned = 0;
                                         } else {
-                                            drawCards(p1,1);
+                                            drawCards(p1,1,pardon);
                                             turn = 2;
                                             expiredStun(1,lightning,turnStunned);
                                         }
@@ -4361,7 +5212,7 @@ int main() {
                         }
                     } else {
                         if (clockwise == false) {
-                            if (lightning == 3) {
+                            if (lightning == 3 and p4.getDeck().getNumberOfCards() != 1) {
                                 bool tookC = true;
                                 coinFlipChallenge(3,suceed,tookC);
                                 if (suceed == 1) {
@@ -4369,7 +5220,7 @@ int main() {
                                     lightning = 0;
                                     turnStunned = 0;
                                 } else if (suceed == 0) {
-                                    drawCards(p4,1);
+                                    drawCards(p4,1,pardon);
                                     turn = 3;
                                     expiredStun(4,lightning,turnStunned);
                                 }
@@ -4378,7 +5229,7 @@ int main() {
                                 turn = 3;
                             }
                         } else {
-                            if (lightning == 1) {
+                            if (lightning == 1 and p4.getDeck().getNumberOfCards() != 1) {
                                 bool tookC = true;
                                 coinFlipChallenge(1,suceed,tookC);
                                 if (tookC == false) {
@@ -4392,7 +5243,7 @@ int main() {
                                         lightning = 0;
                                         turnStunned = 0;
                                     } else {
-                                        drawCards(p1,1);
+                                        drawCards(p1,1,pardon);
                                         turn = 2;
                                         expiredStun(1,lightning,turnStunned);
                                     }
@@ -4433,6 +5284,10 @@ int main() {
                 pt1 += (p3.getDeck().valueOfDeck() + p4.getDeck().valueOfDeck());
                 won1 += (p3.getDeck().valueOfDeck() + p4.getDeck().valueOfDeck());
             }
+            if (pardon != -1) {
+                pt1 += 100;
+                won1 += 100;
+            }
             rounds1++;
         } else if (p2.getDeck().getNumberOfCards() == 0){
             std::cout << "CPU 2 wins!" << std::endl;
@@ -4442,16 +5297,28 @@ int main() {
                 pt2 += (p3.getDeck().valueOfDeck() + p4.getDeck().valueOfDeck());
                 won2 += (p3.getDeck().valueOfDeck() + p4.getDeck().valueOfDeck());
             }
+            if (pardon != -1) {
+                pt2 += 100;
+                won2 += 100;
+            }
             rounds2++;
         } else if (p3.getDeck().getNumberOfCards() == 0) {
             std::cout << "CPU 3 wins!" << std::endl;
             pt3 += (p1.getDeck().valueOfDeck() + p2.getDeck().valueOfDeck() + p4.getDeck().valueOfDeck());
             won3 += (p1.getDeck().valueOfDeck() + p2.getDeck().valueOfDeck() + p4.getDeck().valueOfDeck());
+            if (pardon != -1) {
+                pt3 += 100;
+                won3 += 100;
+            }
             rounds3++;
         } else {
             std::cout << "CPU 4 wins!" << std::endl;
             pt4 += (p1.getDeck().valueOfDeck() + p2.getDeck().valueOfDeck() + p3.getDeck().valueOfDeck());
             won4 += (p1.getDeck().valueOfDeck() + p2.getDeck().valueOfDeck() + p3.getDeck().valueOfDeck());
+            if (pardon != -1) {
+                pt4 += 100;
+                won4 += 100;
+            }
             rounds4++;
         }
         std::string cont = "";
@@ -4459,7 +5326,7 @@ int main() {
         while (cont.compare("C") != 0) {
             std::cout << "1st: ";
             if (p1.getDeck().getNumberOfCards() == 0) {
-                std::cout << "Player 1" << std::endl;
+                std::cout << "You" << std::endl;
                 winnings.push_back(1);
             } else {
                 if (p2.getDeck().getNumberOfCards() == 0) {
@@ -4479,257 +5346,297 @@ int main() {
                     std::cout << "CPU 2" << std::endl;
                     winnings.push_back(2);
                 } else {
-                    if (min(p2.getDeck().valueOfDeck(), p3.getDeck().valueOfDeck(), p4.getDeck().valueOfDeck()) == p2.getDeck().valueOfDeck()) {
+                    int total2 = p2.getDeck().valueOfDeck();
+                    int total3 = p3.getDeck().valueOfDeck();
+                    int total4 = p4.getDeck().valueOfDeck();
+                    if (pardon == 2) {
+                        total2 += 100;
+                    } else if (pardon == 3) {
+                        total3 += 100;
+                    } else if (pardon == 4) {
+                        total4 += 100;
+                    }
+                    if (min(total2, total3, total4) == total2) {
                         std::cout << "CPU 2" << std::endl;
-                        pt2 += (p3.getDeck().valueOfDeck() + p4.getDeck().valueOfDeck());
-                        won2 = p3.getDeck().valueOfDeck() + p4.getDeck().valueOfDeck();
+                        pt2 += (total3 + total4);
+                        won2 = total3 + total4;
                         winnings.push_back(2);
-                        if (min(p3.getDeck().valueOfDeck(),p4.getDeck().valueOfDeck()) == p3.getDeck().valueOfDeck()) {
+                        if (min(total3,total4) == total3) {
                             std::cout << "3rd: CPU 3" << std::endl;
                             std::cout << "4th: CPU 4" << std::endl;
                             winnings.push_back(3);
                             winnings.push_back(4);
-                            pt3 += p4.getDeck().valueOfDeck();
-                            won3 = p4.getDeck().valueOfDeck();            
+                            pt3 += total4;
+                            won3 = total4;           
                         } else {
                             std::cout << "3rd: CPU 4" << std::endl;
                             std::cout << "4th: CPU 3" << std::endl;
                             winnings.push_back(4);
                             winnings.push_back(3);
-                            pt4 += p3.getDeck().valueOfDeck();
-                            won4 = p3.getDeck().valueOfDeck();
+                            pt4 += total3;
+                            won4 = total3;
                         }
-                    } else if (min(p2.getDeck().valueOfDeck(), p3.getDeck().valueOfDeck(), p4.getDeck().valueOfDeck()) == p3.getDeck().valueOfDeck()) {
+                    } else if (min(total2,total3,total4) == total3) {
                         std::cout << "CPU 3" << std::endl;
-                        pt3 += (p2.getDeck().valueOfDeck() + p4.getDeck().valueOfDeck());
-                        won3 = p2.getDeck().valueOfDeck() + p4.getDeck().valueOfDeck();
+                        pt3 += (total2+total4);
+                        won3 = total2+total4;
                         winnings.push_back(3);
-                        if (min(p2.getDeck().valueOfDeck(),p4.getDeck().valueOfDeck()) == p2.getDeck().valueOfDeck()) {
+                        if (min(total2,total4) == total2) {
                             std::cout << "3rd: CPU 2" << std::endl;
                             std::cout << "4th: CPU 4" << std::endl;
                             winnings.push_back(2);
                             winnings.push_back(4);
-                            pt2 += p4.getDeck().valueOfDeck();
-                            won2 = p4.getDeck().valueOfDeck();
+                            pt2 += total4;
+                            won2 = total4;
                         } else {
                             std::cout << "3rd: CPU 4" << std::endl;
                             std::cout << "4th: CPU 2" << std::endl;
                             winnings.push_back(4);
                             winnings.push_back(2);
-                            pt4 += p2.getDeck().valueOfDeck();
-                            won4 = p2.getDeck().valueOfDeck();
+                            pt4 += total2;
+                            won4 = total2;
                         }
                     } else {
                         std::cout << "CPU 4" << std::endl;
-                        pt4 += (p3.getDeck().valueOfDeck() + p2.getDeck().valueOfDeck());
-                        won4 = p3.getDeck().valueOfDeck() + p2.getDeck().valueOfDeck();
+                        pt4 += (total3 + total2);
+                        won4 = total3+total2;
                         winnings.push_back(4);
-                        if (min(p2.getDeck().valueOfDeck(),p3.getDeck().valueOfDeck()) == p2.getDeck().valueOfDeck()) {
+                        if (min(total2,total3) == total2) {
                             std::cout << "3rd: CPU 2" << std::endl;
                             std::cout << "4th: CPU 3" << std::endl;
                             winnings.push_back(2);
                             winnings.push_back(3);
-                            pt2 += p3.getDeck().valueOfDeck();
-                            won2 = p3.getDeck().valueOfDeck();
+                            pt2 += total3;
+                            won2 = total3;
                         } else {
                             std::cout << "3rd: CPU 3" << std::endl;
                             std::cout << "4th: CPU 2" << std::endl;
                             winnings.push_back(3);
                             winnings.push_back(2);
-                            pt3 += p2.getDeck().valueOfDeck();
-                            won3 = p2.getDeck().valueOfDeck();
+                            pt3 += total2;
+                            won3 = total2;
                         }
                     }
                 }
             } else if (p2.getDeck().getNumberOfCards() == 0) {
                 if (numPlay == 2) {
-                    std::cout << "Player 1" << std::endl;
+                    std::cout << "You" << std::endl;
                     winnings.push_back(1);
                 } else {
-                    if (min(p1.getDeck().valueOfDeck(), p3.getDeck().valueOfDeck(), p4.getDeck().valueOfDeck()) == p1.getDeck().valueOfDeck()) {
-                        std::cout << "Player 1" << std::endl;
-                            pt1 += (p3.getDeck().valueOfDeck() + p4.getDeck().valueOfDeck());
-                            won1 = p3.getDeck().valueOfDeck() + p4.getDeck().valueOfDeck();
-                            winnings.push_back(1);
-                        if (min(p3.getDeck().valueOfDeck(),p4.getDeck().valueOfDeck()) == p3.getDeck().valueOfDeck()) {
+                    int total1 = p1.getDeck().valueOfDeck();
+                    int total3 = p3.getDeck().valueOfDeck();
+                    int total4 = p4.getDeck().valueOfDeck();
+                    if (pardon == 1) {
+                        total1 += 100;
+                    } else if (pardon == 3) {
+                        total3 += 100;
+                    } else if (pardon == 4) {
+                        total4 += 100;
+                    }
+                    if (min(total1,total3,total4) == total1) {
+                        std::cout << "You" << std::endl;
+                        pt1 += (total3+total4);
+                        won1 = total3+total4;
+                        winnings.push_back(1);
+                        if (min(total3,total4) == total3) {
                             std::cout << "3rd: CPU 3" << std::endl;
                             std::cout << "4th: CPU 4" << std::endl;
                             winnings.push_back(3);
                             winnings.push_back(4);
-                            pt3 += p4.getDeck().valueOfDeck();
-                            won3 = p4.getDeck().valueOfDeck();
+                            pt3 += total4;
+                            won3 = total4;
                         } else {
                             std::cout << "3rd: CPU 4" << std::endl;
                             std::cout << "4th: CPU 3" << std::endl;
                             winnings.push_back(4);
                             winnings.push_back(3);
-                            pt4 += p3.getDeck().valueOfDeck();
-                            won4 = p3.getDeck().valueOfDeck();
+                            pt4 += total3;
+                            won4 = total3;
                         }
-                    } else if (min(p1.getDeck().valueOfDeck(), p3.getDeck().valueOfDeck(), p4.getDeck().valueOfDeck()) == p3.getDeck().valueOfDeck()) {
+                    } else if (min(total1,total3,total4) == total3) {
                         std::cout << "CPU 3" << std::endl;
-                        pt3 += (p4.getDeck().valueOfDeck() + p1.getDeck().valueOfDeck());
-                        won3 = p4.getDeck().valueOfDeck() + p1.getDeck().valueOfDeck();
+                        pt3 += (total4+total1);
+                        won3 = total4+total1;
                         winnings.push_back(3);
-                        if (min(p1.getDeck().valueOfDeck(),p4.getDeck().valueOfDeck()) == p1.getDeck().valueOfDeck()) { 
-                            std::cout << "3rd: Player 1" << std::endl;
+                        if (min(total1,total4) == total1) { 
+                            std::cout << "3rd: You" << std::endl;
                             std::cout << "4th: CPU 4" << std::endl;           
                             winnings.push_back(1);
                             winnings.push_back(4);
-                            pt1 += p4.getDeck().valueOfDeck();
-                            won1 = p4.getDeck().valueOfDeck();
+                            pt1 += total4;
+                            won1 = total4;
                         } else {
                             std::cout << "3rd: CPU 4" << std::endl;
-                            std::cout << "4th: Player 1" << std::endl;
+                            std::cout << "4th: You" << std::endl;
                             winnings.push_back(4);
                             winnings.push_back(1);
-                            pt4 += p1.getDeck().valueOfDeck();
-                            won4 = p1.getDeck().valueOfDeck();
+                            pt4 += total1;
+                            won4 = total1;
                         }
                     } else {
                         std::cout << "CPU 4" << std::endl;
-                        pt4 += (p3.getDeck().valueOfDeck() + p1.getDeck().valueOfDeck());
-                        won4 = p3.getDeck().valueOfDeck() + p1.getDeck().valueOfDeck();
+                        pt4 += (total3+total1);
+                        won4 = total3+total1;
                         winnings.push_back(4);
-                        if (min(p1.getDeck().valueOfDeck(),p3.getDeck().valueOfDeck()) == p1.getDeck().valueOfDeck()) {
-                            std::cout << "3rd: Player 1" << std::endl;
+                        if (min(total1,total3) == total1) {
+                            std::cout << "3rd: You" << std::endl;
                             std::cout << "4th: CPU 3" << std::endl;
                             winnings.push_back(1);
                             winnings.push_back(3);
-                            pt1 += p3.getDeck().valueOfDeck();
-                            won1 = p3.getDeck().valueOfDeck();
+                            pt1 += total3;
+                            won1 = total3;
                         } else {
                             std::cout << "3rd: CPU 3" << std::endl;
-                            std::cout << "4th: Player 1" << std::endl;
+                            std::cout << "4th: You" << std::endl;
                             winnings.push_back(3);
                             winnings.push_back(1);
-                            pt3 += p1.getDeck().valueOfDeck();
-                            won3 = p1.getDeck().valueOfDeck();
+                            pt3 += total1;
+                            won3 = total1;
                         }
                     }
                 }
             } else if (p3.getDeck().getNumberOfCards() == 0) {
-                if (min(p1.getDeck().valueOfDeck(), p2.getDeck().valueOfDeck(), p4.getDeck().valueOfDeck()) == p1.getDeck().valueOfDeck()) {
-                    std::cout << "Player 1" << std::endl;
-                        pt1 += (p2.getDeck().valueOfDeck() + p4.getDeck().valueOfDeck());
-                        won1 = p2.getDeck().valueOfDeck() + p4.getDeck().valueOfDeck();
-                        winnings.push_back(1);
-                    if (min(p2.getDeck().valueOfDeck(),p4.getDeck().valueOfDeck()) == p2.getDeck().valueOfDeck()) {
+                int total2 = p2.getDeck().valueOfDeck();
+                int total1 = p1.getDeck().valueOfDeck();
+                int total4 = p4.getDeck().valueOfDeck();
+                if (pardon == 2) {
+                    total2 += 100;
+                } else if (pardon == 1) {
+                    total1 += 100;
+                } else if (pardon == 4) {
+                    total4 += 100;
+                }
+                if (min(total1,total2,total4) == total1) {
+                    std::cout << "You" << std::endl;
+                    pt1 += (total2+total4);
+                    won1 = total2+total4;
+                    winnings.push_back(1);
+                    if (min(total2,total4) == total2) {
                         std::cout << "3rd: CPU 2" << std::endl;
                         std::cout << "4th: CPU 4" << std::endl;
                         winnings.push_back(2);
                         winnings.push_back(4);
-                        pt2 += p4.getDeck().valueOfDeck();
-                        won2 = p4.getDeck().valueOfDeck();
-                        } else {
-                            std::cout << "3rd: CPU 4" << std::endl;
-                            std::cout << "4th: CPU 2" << std::endl;
-                            winnings.push_back(4);
-                            winnings.push_back(2);
-                            pt4 += p2.getDeck().valueOfDeck();
-                            won4 = p2.getDeck().valueOfDeck();
-                        }
-                } else if (min(p1.getDeck().valueOfDeck(), p2.getDeck().valueOfDeck(), p4.getDeck().valueOfDeck()) == p2.getDeck().valueOfDeck()) {
+                        pt2 += total4;
+                        won2 = total4;
+                    } else {
+                        std::cout << "3rd: CPU 4" << std::endl;
+                        std::cout << "4th: CPU 2" << std::endl;
+                        winnings.push_back(4);
+                        winnings.push_back(2);
+                        pt4 += total2;
+                        won4 = total2;
+                    }
+                } else if (min(total1,total2,total4) == total2) {
                     std::cout << "CPU 2" << std::endl;
-                    pt2 += (p1.getDeck().valueOfDeck() + p4.getDeck().valueOfDeck());
-                    won2 = p1.getDeck().valueOfDeck() + p4.getDeck().valueOfDeck();
+                    pt2 += (total1+total4);
+                    won2 = total1+total4;
                     winnings.push_back(2);
-                    if (min(p1.getDeck().valueOfDeck(),p4.getDeck().valueOfDeck()) == p1.getDeck().valueOfDeck()) {
-                        std::cout << "3rd: Player 1" << std::endl;
+                    if (min(total1,total4) == total1) {
+                        std::cout << "3rd: You" << std::endl;
                         std::cout << "4th: CPU 4" << std::endl;
                         winnings.push_back(1);
                         winnings.push_back(4);
-                        pt1 += p4.getDeck().valueOfDeck();
-                        won1 = p4.getDeck().valueOfDeck();
-                        } else {
-                            std::cout << "3rd: CPU 4" << std::endl;
-                            std::cout << "4th: Player 1" << std::endl;
-                            winnings.push_back(4);
-                            winnings.push_back(1);
-                            pt4 += p1.getDeck().valueOfDeck();
-                            won4 = p1.getDeck().valueOfDeck();
-                        }
+                        pt1 += total4;
+                        won1 = total4;
+                    } else {
+                        std::cout << "3rd: CPU 4" << std::endl;
+                        std::cout << "4th: You" << std::endl;
+                        winnings.push_back(4);
+                        winnings.push_back(1);
+                        pt4 += total1;
+                        won4 = total1;
+                    }
                 } else {
                     std::cout << "CPU 4" << std::endl;
-                    pt4 += (p1.getDeck().valueOfDeck() + p2.getDeck().valueOfDeck());
-                    won4 = p1.getDeck().valueOfDeck() + p2.getDeck().valueOfDeck();
+                    pt4 += (total1+total2);
+                    won4 = total1+total2;
                     winnings.push_back(4);
-                    if (min(p1.getDeck().valueOfDeck(),p2.getDeck().valueOfDeck()) == p1.getDeck().valueOfDeck()) {
-                        std::cout << "3rd: Player 1" << std::endl;
+                    if (min(total1,total2) == total1) {
+                        std::cout << "3rd: You" << std::endl;
                         std::cout << "4th: CPU 2" << std::endl;
                         winnings.push_back(1);
                         winnings.push_back(2);
-                        pt1 += p2.getDeck().valueOfDeck();
-                        won1 = p2.getDeck().valueOfDeck();
+                        pt1 += total2;
+                        won1 = total2;
                     } else {
                         std::cout << "3rd: CPU 2" << std::endl;
-                        std::cout << "4th: Player 1" << std::endl;
+                        std::cout << "4th: You" << std::endl;
                         winnings.push_back(2);
                         winnings.push_back(1);
-                        pt2 += p1.getDeck().valueOfDeck();
-                        won2 = p1.getDeck().valueOfDeck();
+                        pt2 += total1;
+                        won2 = total1;
                     }
                 }
             } else {
-                if (min(p1.getDeck().valueOfDeck(), p2.getDeck().valueOfDeck(), p3.getDeck().valueOfDeck()) == p1.getDeck().valueOfDeck()) {
-                    std::cout << "Player 1" << std::endl;
-                    pt1 += (p3.getDeck().valueOfDeck() + p2.getDeck().valueOfDeck());
-                    won1 = p3.getDeck().valueOfDeck() + p2.getDeck().valueOfDeck();
+                int total2 = p2.getDeck().valueOfDeck();
+                int total3 = p3.getDeck().valueOfDeck();
+                int total1 = p1.getDeck().valueOfDeck();
+                if (pardon == 2) {
+                    total2 += 100;
+                } else if (pardon == 3) {
+                    total3 += 100;
+                } else if (pardon == 1) {
+                    total1 += 100;
+                }
+                if (min(total1,total2,total3) == total1) {
+                    std::cout << "You" << std::endl;
+                    pt1 += (total3+total2);
+                    won1 = total3+total2;
                     winnings.push_back(1);
-                    if (min(p2.getDeck().valueOfDeck(),p3.getDeck().valueOfDeck()) == p2.getDeck().valueOfDeck()) {
+                    if (min(total2,total3) == total2) {
                         std::cout << "3rd: CPU 2" << std::endl;
                         std::cout << "4th: CPU 3" << std::endl;
                         winnings.push_back(2);
                         winnings.push_back(3);
-                        pt2 += p3.getDeck().valueOfDeck();
-                        won2 = p3.getDeck().valueOfDeck();
+                        pt2 += total3;
+                        won2 = total3;
                     } else {
                         std::cout << "3rd: CPU 3" << std::endl;
                         std::cout << "4th: CPU 2" << std::endl;
                         winnings.push_back(3);
                         winnings.push_back(2);
-                        pt3 += p2.getDeck().valueOfDeck();
-                        won3 = p2.getDeck().valueOfDeck();
+                        pt3 += total2;
+                        won3 = total2;
                     }
-                } else if (min(p1.getDeck().valueOfDeck(), p2.getDeck().valueOfDeck(), p3.getDeck().valueOfDeck()) == p2.getDeck().valueOfDeck()) {
+                } else if (min(total1,total2,total3) == total2) {
                     std::cout << "CPU 2" << std::endl;
-                    pt2 += (p3.getDeck().valueOfDeck() + p1.getDeck().valueOfDeck());
-                    won2 = p3.getDeck().valueOfDeck() + p1.getDeck().valueOfDeck();
+                    pt2 += (total3+total1);
+                    won2 = total3+total1;
                     winnings.push_back(2);
-                    if (min(p1.getDeck().valueOfDeck(),p3.getDeck().valueOfDeck()) == p1.getDeck().valueOfDeck()) {
-                        std::cout << "3rd: Player 1" << std::endl;
+                    if (min(total1,total3) == total1) {
+                        std::cout << "3rd: You" << std::endl;
                         std::cout << "4th: CPU 3" << std::endl;
                         winnings.push_back(1);
                         winnings.push_back(3);
-                        pt1 += p3.getDeck().valueOfDeck();
-                        won1 = p3.getDeck().valueOfDeck();
+                        pt1 += total3;
+                        won1 = total3;
                     } else {
                         std::cout << "3rd: CPU 3" << std::endl;
-                        std::cout << "4th: Player 1" << std::endl;
+                        std::cout << "4th: You" << std::endl;
                         winnings.push_back(3);
                         winnings.push_back(1);
-                        pt3 += p1.getDeck().valueOfDeck();
-                        won3 = p1.getDeck().valueOfDeck();
+                        pt3 += total1;
+                        won3 = total1;
                     }
                 } else {
                     std::cout << "CPU 3" << std::endl;
-                    pt3 += (p2.getDeck().valueOfDeck() + p1.getDeck().valueOfDeck());
-                    won3 = p2.getDeck().valueOfDeck() + p1.getDeck().valueOfDeck();
+                    pt3 += (total2+total1);
+                    won3 = total2+total1;
                     winnings.push_back(3);
-                    if (min(p1.getDeck().valueOfDeck(),p2.getDeck().valueOfDeck()) == p1.getDeck().valueOfDeck()) {
-                        std::cout << "3rd: Player 1" << std::endl;
+                    if (min(total1,total2) == total1) {
+                        std::cout << "3rd: You" << std::endl;
                         std::cout << "4th: CPU 2" << std::endl;
                         winnings.push_back(1);
                         winnings.push_back(2);
-                        pt1 += p2.getDeck().valueOfDeck();
-                        won1 = p2.getDeck().valueOfDeck();
+                        pt1 += total2;
+                        won1 = total2;
                     } else {
                         std::cout << "3rd: CPU 2" << std::endl;
-                        std::cout << "4th: Player 1" << std::endl;
+                        std::cout << "4th: You" << std::endl;
                         winnings.push_back(2);
                         winnings.push_back(1);
-                        pt2 += p1.getDeck().valueOfDeck();
-                        won2 = p1.getDeck().valueOfDeck();
+                        pt2 += total1;
+                        won2 = total1;
                     }
                 }
             }
@@ -4745,7 +5652,7 @@ int main() {
                                 if (winnings[i] > 1) {
                                     std::cout << "CPU " << winnings[i] << std::endl;
                                 } else {
-                                    std::cout << "Player 1" << std::endl;
+                                    std::cout << "You" << std::endl;
                                 }
                                 break;
                             case 1:
@@ -4753,7 +5660,7 @@ int main() {
                                 if (winnings[i] > 1) {
                                     std::cout << "CPU " << winnings[i] << std::endl;
                                 } else {
-                                    std::cout << "Player 1" << std::endl;
+                                    std::cout << "You" << std::endl;
                                 }
                                 break;
                             case 2:
@@ -4762,7 +5669,7 @@ int main() {
                                     if (winnings[i] > 1) {
                                         std::cout << "CPU " << winnings[i] << std::endl;
                                     } else {
-                                        std::cout << "Player 1" << std::endl;
+                                        std::cout << "You" << std::endl;
                                     }
                                     break;
                                 }
@@ -4772,14 +5679,14 @@ int main() {
                                     if (winnings[i] > 1) {
                                         std::cout << "CPU " << winnings[i] << std::endl;
                                     } else {
-                                        std::cout << "Player 1" << std::endl;
+                                        std::cout << "You" << std::endl;
                                     }
                                 }
                         }
                     }
                 }
                 std::cout << "Choose from the following options: " << std::endl;
-                std::cout << "Type 1 to see Player 1's statistics (owned cards, value of deck, points won). " << std::endl;
+                std::cout << "Type 1 to see Your statistics (owned cards, value of deck, points won). " << std::endl;
                 std::cout << "Type 2 to see CPU 2's statistics (owned cards, value of deck, points won). " << std::endl;
                 if (numPlay == 4) {
                     std::cout << "Type 3 to see CPU 3's statistics (owned cards, value of deck, points won). " << std::endl;
@@ -4806,34 +5713,67 @@ int main() {
                 makeWhiteSpace();
                 switch(sample) {
                     case 1:
-                        std::cout << "Player 1's hand: " << std::endl;
-                        std::cout << "Player 1 deck value: " << p1.getDeck().valueOfDeck() << std::endl;
+                        std::cout << "Your hand: " << std::endl;
                         p1.revealHand1();
-                        std::cout << "Player 1 has earned a total of: " << won1 << " points!" << std::endl;
+                        {
+                        int totalP1 = p1.getDeck().valueOfDeck();
+                        if (p1.getDeck().getNumberOfCards() != 0 and pardon == 1) {
+                            totalP1 += 100;
+                        }
+                        if (pardon == 1) {
+                            std::cout << "PARDON CARD (100 points) " << std::endl;
+                        }
+                        std::cout << "Your deck value: " << totalP1 << std::endl;
+                        }
+                        std::cout << "You has earned a total of: " << won1 << " points!" << std::endl;
                         break;
                     case 2:
                         std::cout << "CPU 2's hand:" << std::endl;
-                        std::cout << "CPU 2 deck value: ";
-                        std::cout << p2.getDeck().valueOfDeck() << std::endl;
                         p2.revealHand1();
-                        std::cout << "CPU 2";
-                        std::cout << " has earned a total of: " << won2 << " points! " << std::endl;
+                        {
+                        int totalP2 = p3.getDeck().valueOfDeck();
+                        if (p2.getDeck().getNumberOfCards() != 0 and pardon == 2) {
+                            totalP2 += 100;
+                        }
+                        if (pardon == 2) {
+                            std::cout << "PARDON CARD (100 points) " << std::endl;
+                        }
+                        std::cout << "CPU 2 deck value: ";
+                        std::cout << totalP2 << std::endl;
+                        }
+                        std::cout << "CPU 2 has earned a total of: " << won2 << " points! " << std::endl;
                         break;
                     case 3:
                         std::cout << "CPU 3's hand:" << std::endl;
-                        std::cout << "CPU 3 deck value: ";
-                        std::cout << p3.getDeck().valueOfDeck() << std::endl;
                         p3.revealHand1();
-                        std::cout << "CPU 3";
-                        std::cout << " has earned a total of: " << won3 << " points!" << std::endl;
+                        {
+                        int totalP3 = p3.getDeck().valueOfDeck();
+                        if (p3.getDeck().getNumberOfCards() != 0 and pardon == 3) {
+                            totalP3 += 100;
+                        }
+                        if (pardon == 3) {
+                            std::cout << "PARDON CARD (100 points) " << std::endl;
+                        }
+                        std::cout << "CPU 3 deck value: ";
+                        std::cout << totalP3 << std::endl;
+                        }
+                        std::cout << "CPU 3 has earned a total of: " << won3 << " points!" << std::endl;
                         break;
                     case 4:
                         std::cout << "CPU 4's hand:" << std::endl;
-                        std::cout << "CPU 4 deck value: ";
-                        std::cout << p4.getDeck().valueOfDeck() << std::endl;
                         p4.revealHand1();
-                        std::cout << "CPU 4";
-                        std::cout << " has earned a total of: " << won4 << " points! " << std::endl;
+                        {
+                        int totalP4 = p4.getDeck().valueOfDeck();
+                        if (p4.getDeck().getNumberOfCards() != 0 and pardon == 4) {
+                            totalP4 += 100;
+                        }
+                        if (pardon == 4) {
+                            std::cout << "PARDON CARD (100 points) " << std::endl;
+                        }
+                        std::cout << "CPU 4 deck value: ";
+                        std::cout << totalP4 << std::endl;
+                        }
+                        std::cout << "CPU 4 has earned a total of: " << won4 << " points! " << std::endl;
                 }
                 count = 1;
             }
@@ -4842,8 +5782,8 @@ int main() {
             std::cout << "Goal: " << ptG << std::endl;
         }
         //display scores
-        std::cout << "Player 1 score: " << pt1 << std::endl;
-        std::cout << "Player 1 rounds won: " << rounds1 << std::endl;
+        std::cout << "Your score: " << pt1 << std::endl;
+        std::cout << "Your rounds won: " << rounds1 << std::endl;
         std::cout << "CPU 2 score: " << pt2 << std::endl;
         std::cout << "CPU 2 rounds won: " << rounds2 << std::endl;
         if (numPlay == 4) {
@@ -4865,7 +5805,7 @@ int main() {
         if (opt == 4) {
             play1 = "";
             while (play1.compare("Y") != 0 and play1.compare("N") != 0) {
-                std::cout << "Player 1, do you wish to play again? Type Y for yes or N for no. ";
+                std::cout << "Do you wish to play again? Type Y for yes or N for no. ";
                 std::cin >> play1;
                 if (play1.compare("Y") != 0 and play1.compare("N") != 0) {
                     std::cout << "Invalid choice! ";
@@ -4884,6 +5824,7 @@ int main() {
         c4 = 0;
         lightning = 0;
         turnStunned = 0;
+        pardon = -1;
 
         makeWhiteSpace();
     }
@@ -4891,8 +5832,8 @@ int main() {
     //overall statistics
     std::cout << std::endl;
     std::cout << "Statistics: " << std::endl;
-    std::cout << "Player 1 score: " << pt1 << std::endl;
-    std::cout << "Player 1 rounds won: " << rounds1 << std::endl;
+    std::cout << "Your score: " << pt1 << std::endl;
+    std::cout << "Your rounds won: " << rounds1 << std::endl;
     std::cout << std::endl;
     std::cout << "CPU 2 score: " << pt2 << std::endl;
     std::cout << "CPU 2 rounds won: " << rounds2 << std::endl;
@@ -4906,7 +5847,7 @@ int main() {
     }
     //winner determination (based on points)
     if (pt1 > pt2 and pt1 > pt3 and pt1 > pt4) {
-        std::cout << "Player 1 wins after " << rounds << " rounds!" << std::endl;
+        std::cout << "You win after " << rounds << " rounds!" << std::endl;
     } else if (pt2 > pt1 and pt2 > pt3 and pt2 > pt4) {
         std::cout << "CPU 2 wins after " << rounds << " rounds!" << std::endl;
     } else if (pt3 > pt1 and pt3 > pt2 and pt3 > pt4) {
@@ -4966,7 +5907,7 @@ int main() {
         }
         if (tiedExistsAgain.size() == 1) {
             if (tiedExistsAgain[0] == 1) {
-                std::cout << "Player 1 wins after " << rounds << " rounds!" << std::endl;
+                std::cout << "You win after " << rounds << " rounds!" << std::endl;
             } else {
                 std::cout << "CPU " << tiedExistsAgain[0] << " wins after " << maxRound << " rounds!" << std::endl;
             }
@@ -4975,14 +5916,14 @@ int main() {
             std::cout << "Tied points won and rounds won! Winner will be determined by random!" << std::endl;
             for (unsigned int i = 0; i < tiedExistsAgain.size(); i++) {
                 if (tiedExistsAgain[i] == 1) {
-                    std::cout << i << " = Player 1 victory" << std::endl;
+                    std::cout << i << " = Your victory" << std::endl;
                 } else {
                     std::cout << i << " = CPU " << tiedExistsAgain[i] << " victory" << std::endl;
                 }
             }
             int winner = rand()%(tiedExistsAgain.size());
             if (tiedExistsAgain[winner] == 1) {
-                std::cout << "Player 1 wins by random draw!" << std::endl;
+                std::cout << "You win by random draw!" << std::endl;
             } else {
                 std::cout << "CPU " << tiedExistsAgain[winner] << " wins by random draw!" << std::endl;
             }
