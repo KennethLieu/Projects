@@ -112,6 +112,11 @@
 
  Update 6/2/2023 v1.4.2
  1. Adds the ability to see how many cards you can expect to draw for each option when challenging +4
+
+ Update 6/20/2023 v1.4.3
+ 1. Player/CPUs will no longer be skipped or have to draw 2 cards if those are the starting cards
+ 2. Player 1 will be referred to as You
+ 3. When your turn arrives, there will be an indicator labeling your hand following by the cards you have on you
 */
 
 #include <iostream>
@@ -524,9 +529,9 @@ void displayEffect(int token, Card start, bool successful = true) {
     if (start.getFaceCard().getFace().compare("DRAW4WILD") == 0) {
         if (token == 1) {
             if (successful) {
-                std::cout << "Player 1: DRAW 4 CARDS!" << std::endl;
+                std::cout << "You: DRAW 4 CARDS!" << std::endl;
             } else {
-                std::cout << "Player 1: DRAW 6 CARDS!" << std::endl;
+                std::cout << "You: DRAW 6 CARDS!" << std::endl;
             }  
         } else {
             if (successful) {
@@ -537,13 +542,13 @@ void displayEffect(int token, Card start, bool successful = true) {
         }
     } else if (start.getFaceCard().getFace().compare("DRAW2") == 0) {
         if (token == 1) {
-            std::cout << "Player 1: DRAW 2 CARDS!" << std::endl;
+            std::cout << "You: DRAW 2 CARDS!" << std::endl;
         } else {
             std::cout << "CPU " << token << ": DRAW 2 CARDS!" << std::endl;
         }
     } else if (start.getFaceCard().getFace().compare("SKIP") == 0) {
         if (token == 1) {
-            std::cout << "Player 1: LOST TURN!" << std::endl;
+            std::cout << "You: LOST TURN!" << std::endl;
         } else {
             std::cout << "CPU " << token << ": LOST TURN!" << std::endl;
         }
@@ -679,12 +684,12 @@ void playerChallengeDraw4Process(Player &challenger, Player &challenged, Card st
         std::cin >> challenging;
     }
     if (challenging.compare("N") == 0) {
-        std::cout << "Player 1 didn't take the challenge." << std::endl;
+        std::cout << "You didn't take the challenge." << std::endl;
         drawCards(challenged,4);
         displayEffect(challenged.getToken(),startingCard);
         turn = getTurnAfterPlayer(challenger.getToken(),numPlay);
     } else {
-        std::cout << "Player 1 took the challenge..." << std::endl;
+        std::cout << "You took the challenge..." << std::endl;
         sleep_for(seconds(3));
         if (challenger.getDeck().hasColor(startColor) == true) {
             std::cout << "and was SUCCESSFUL!" << std::endl;
@@ -703,10 +708,10 @@ void playerChallengeDraw4Process(Player &challenger, Player &challenged, Card st
 //Verify UNOs for player and CPUs
 void verifyUNOs(bool shoutUNO1, bool shoutUNO2, bool shoutUNO3, bool shoutUNO4, int &c1, int &c2, int &c3, int &c4, Player &p1) {
     if (shoutUNO1 == true and p1.getDeck().getNumberOfCards() == 1 and c1 == 0) {
-        std::cout << "Player 1: UNO!" << std::endl;
+        std::cout << "You: UNO!" << std::endl;
         c1++;
     } else if (p1.getDeck().getNumberOfCards() == 1 and shoutUNO1 == false) {
-        std::cout << "Player 1: Missed UNO shout. DRAW 2 CARDS!" << std::endl;
+        std::cout << "You: Missed UNO shout. DRAW 2 CARDS!" << std::endl;
         drawCards(p1,2);
     }
     if (shoutUNO2 == true and c2 == 0) {
@@ -849,39 +854,8 @@ int main() {
         }
         Card startingCard;
 
-        //starting card is action card, take appropriate actions on first player
-        if (startingCard.getFaceCard().getFace().compare("DRAW2") == 0 or startingCard.getFaceCard().getFace().compare("SKIP") == 0 or startingCard.getFaceCard().getFace().compare("REVERSE") == 0) {
-            if (turn == 1) {
-                displayEffect(p1.getToken(),startingCard);
-            } else if (turn == 2) {
-                displayEffect(p2.getToken(),startingCard);
-            } else if (turn == 3) {
-                displayEffect(p3.getToken(),startingCard);
-            } else {
-                displayEffect(p4.getToken(),startingCard);
-            }
-            if (startingCard.getFaceCard().getFace().compare("DRAW2") == 0) {
-                if (turn == 1) {
-                    drawCards(p1,2);
-                } else if (turn == 2) {
-                    drawCards(p2,2);
-                } else if (turn == 3) {
-                    drawCards(p3,2);
-                } else {
-                    drawCards(p4,2);
-                }
-            }
-            if (startingCard.getFaceCard().getFace().compare("DRAW2") == 0 or startingCard.getFaceCard().getFace().compare("SKIP") == 0) {
-                if (turn == 4 or (turn == 2 and numPlay == 2)) {
-                    turn = 1;
-                } else {
-                    turn++;
-                }
-            } else {
-                clockwise = false;
-            }
         //take appropriate action for wild/draw 4
-        } else if (startingCard.getFaceCard().getFace().compare("WILD") == 0 or startingCard.getFaceCard().getFace().compare("DRAW4WILD") == 0 or startingCard.getFaceCard().getFace().compare("WILDTWIST") == 0) {
+         if (startingCard.getFaceCard().getFace().compare("WILD") == 0 or startingCard.getFaceCard().getFace().compare("DRAW4WILD") == 0 or startingCard.getFaceCard().getFace().compare("WILDTWIST") == 0) {
             std::cout << "Starting color chosen by random!" << std::endl;
             dec = rand()%4;
             switch(dec) {
@@ -934,7 +908,8 @@ int main() {
                 verifyUNOs(shoutedUno1,shoutedUno2,shoutedUno3,shoutedUno4,c1,c2,c3,c4,p1); 
                 playableCards1 = getPlayableCards(p1.getDeck(),startingCard);
                 positions1 = getPlayablePositions(p1.getDeck(),startingCard);
-                std::cout << "Player 1's turn!" << std::endl;
+                std::cout << "Your turn!" << std::endl;
+                std::cout << "Your hand: " << std::endl;
                 p1.revealHand();
 
                 //displays number of cards each oppoent(s) has
@@ -2004,7 +1979,7 @@ int main() {
         //display winner
         if (p1.getDeck().getNumberOfCards() == 0) {
             won1 = p2.getDeck().valueOfDeck();
-            std::cout << "Player 1 wins!" << std::endl;
+            std::cout << "You win!" << std::endl;
             pt1 += p2.getDeck().valueOfDeck();
             if (numPlay == 4) {
                 pt1 += (p3.getDeck().valueOfDeck() + p4.getDeck().valueOfDeck());
@@ -2036,7 +2011,7 @@ int main() {
         while (cont.compare("C") != 0) {
             std::cout << "1st: ";
             if (p1.getDeck().getNumberOfCards() == 0) {
-                std::cout << "Player 1" << std::endl;
+                std::cout << "You" << std::endl;
                 winnings.push_back(1);
             } else {
                 if (p2.getDeck().getNumberOfCards() == 0) {
@@ -2120,11 +2095,11 @@ int main() {
                 }
             } else if (p2.getDeck().getNumberOfCards() == 0) {
                 if (numPlay == 2) {
-                    std::cout << "Player 1" << std::endl;
+                    std::cout << "You" << std::endl;
                     winnings.push_back(1);
                 } else {
                     if (min(p1.getDeck().valueOfDeck(), p3.getDeck().valueOfDeck(), p4.getDeck().valueOfDeck()) == p1.getDeck().valueOfDeck()) {
-                        std::cout << "Player 1" << std::endl;
+                        std::cout << "You" << std::endl;
                             pt1 += (p3.getDeck().valueOfDeck() + p4.getDeck().valueOfDeck());
                             won1 = p3.getDeck().valueOfDeck() + p4.getDeck().valueOfDeck();
                             winnings.push_back(1);
@@ -2149,7 +2124,7 @@ int main() {
                         won3 = p4.getDeck().valueOfDeck() + p1.getDeck().valueOfDeck();
                         winnings.push_back(3);
                         if (min(p1.getDeck().valueOfDeck(),p4.getDeck().valueOfDeck()) == p1.getDeck().valueOfDeck()) { 
-                            std::cout << "3rd: Player 1" << std::endl;
+                            std::cout << "3rd: You" << std::endl;
                             std::cout << "4th: CPU 4" << std::endl;           
                             winnings.push_back(1);
                             winnings.push_back(4);
@@ -2157,7 +2132,7 @@ int main() {
                             won1 = p4.getDeck().valueOfDeck();
                         } else {
                             std::cout << "3rd: CPU 4" << std::endl;
-                            std::cout << "4th: Player 1" << std::endl;
+                            std::cout << "4th: You" << std::endl;
                             winnings.push_back(4);
                             winnings.push_back(1);
                             pt4 += p1.getDeck().valueOfDeck();
@@ -2169,7 +2144,7 @@ int main() {
                         won4 = p3.getDeck().valueOfDeck() + p1.getDeck().valueOfDeck();
                         winnings.push_back(4);
                         if (min(p1.getDeck().valueOfDeck(),p3.getDeck().valueOfDeck()) == p1.getDeck().valueOfDeck()) {
-                            std::cout << "3rd: Player 1" << std::endl;
+                            std::cout << "3rd: You" << std::endl;
                             std::cout << "4th: CPU 3" << std::endl;
                             winnings.push_back(1);
                             winnings.push_back(3);
@@ -2177,7 +2152,7 @@ int main() {
                             won1 = p3.getDeck().valueOfDeck();
                         } else {
                             std::cout << "3rd: CPU 3" << std::endl;
-                            std::cout << "4th: Player 1" << std::endl;
+                            std::cout << "4th: You" << std::endl;
                             winnings.push_back(3);
                             winnings.push_back(1);
                             pt3 += p1.getDeck().valueOfDeck();
@@ -2187,7 +2162,7 @@ int main() {
                 }
             } else if (p3.getDeck().getNumberOfCards() == 0) {
                 if (min(p1.getDeck().valueOfDeck(), p2.getDeck().valueOfDeck(), p4.getDeck().valueOfDeck()) == p1.getDeck().valueOfDeck()) {
-                    std::cout << "Player 1" << std::endl;
+                    std::cout << "You" << std::endl;
                         pt1 += (p2.getDeck().valueOfDeck() + p4.getDeck().valueOfDeck());
                         won1 = p2.getDeck().valueOfDeck() + p4.getDeck().valueOfDeck();
                         winnings.push_back(1);
@@ -2212,7 +2187,7 @@ int main() {
                     won2 = p1.getDeck().valueOfDeck() + p4.getDeck().valueOfDeck();
                     winnings.push_back(2);
                     if (min(p1.getDeck().valueOfDeck(),p4.getDeck().valueOfDeck()) == p1.getDeck().valueOfDeck()) {
-                        std::cout << "3rd: Player 1" << std::endl;
+                        std::cout << "3rd: You" << std::endl;
                         std::cout << "4th: CPU 4" << std::endl;
                         winnings.push_back(1);
                         winnings.push_back(4);
@@ -2220,7 +2195,7 @@ int main() {
                         won1 = p4.getDeck().valueOfDeck();
                         } else {
                             std::cout << "3rd: CPU 4" << std::endl;
-                            std::cout << "4th: Player 1" << std::endl;
+                            std::cout << "4th: You" << std::endl;
                             winnings.push_back(4);
                             winnings.push_back(1);
                             pt4 += p1.getDeck().valueOfDeck();
@@ -2232,7 +2207,7 @@ int main() {
                     won4 = p1.getDeck().valueOfDeck() + p2.getDeck().valueOfDeck();
                     winnings.push_back(4);
                     if (min(p1.getDeck().valueOfDeck(),p2.getDeck().valueOfDeck()) == p1.getDeck().valueOfDeck()) {
-                        std::cout << "3rd: Player 1" << std::endl;
+                        std::cout << "3rd: You" << std::endl;
                         std::cout << "4th: CPU 2" << std::endl;
                         winnings.push_back(1);
                         winnings.push_back(2);
@@ -2240,7 +2215,7 @@ int main() {
                         won1 = p2.getDeck().valueOfDeck();
                     } else {
                         std::cout << "3rd: CPU 2" << std::endl;
-                        std::cout << "4th: Player 1" << std::endl;
+                        std::cout << "4th: You" << std::endl;
                         winnings.push_back(2);
                         winnings.push_back(1);
                         pt2 += p1.getDeck().valueOfDeck();
@@ -2249,7 +2224,7 @@ int main() {
                 }
             } else {
                 if (min(p1.getDeck().valueOfDeck(), p2.getDeck().valueOfDeck(), p3.getDeck().valueOfDeck()) == p1.getDeck().valueOfDeck()) {
-                    std::cout << "Player 1" << std::endl;
+                    std::cout << "You" << std::endl;
                     pt1 += (p3.getDeck().valueOfDeck() + p2.getDeck().valueOfDeck());
                     won1 = p3.getDeck().valueOfDeck() + p2.getDeck().valueOfDeck();
                     winnings.push_back(1);
@@ -2274,7 +2249,7 @@ int main() {
                     won2 = p3.getDeck().valueOfDeck() + p1.getDeck().valueOfDeck();
                     winnings.push_back(2);
                     if (min(p1.getDeck().valueOfDeck(),p3.getDeck().valueOfDeck()) == p1.getDeck().valueOfDeck()) {
-                        std::cout << "3rd: Player 1" << std::endl;
+                        std::cout << "3rd: You" << std::endl;
                         std::cout << "4th: CPU 3" << std::endl;
                         winnings.push_back(1);
                         winnings.push_back(3);
@@ -2282,7 +2257,7 @@ int main() {
                         won1 = p3.getDeck().valueOfDeck();
                     } else {
                         std::cout << "3rd: CPU 3" << std::endl;
-                        std::cout << "4th: Player 1" << std::endl;
+                        std::cout << "4th: You" << std::endl;
                         winnings.push_back(3);
                         winnings.push_back(1);
                         pt3 += p1.getDeck().valueOfDeck();
@@ -2294,7 +2269,7 @@ int main() {
                     won3 = p2.getDeck().valueOfDeck() + p1.getDeck().valueOfDeck();
                     winnings.push_back(3);
                     if (min(p1.getDeck().valueOfDeck(),p2.getDeck().valueOfDeck()) == p1.getDeck().valueOfDeck()) {
-                        std::cout << "3rd: Player 1" << std::endl;
+                        std::cout << "3rd: You" << std::endl;
                         std::cout << "4th: CPU 2" << std::endl;
                         winnings.push_back(1);
                         winnings.push_back(2);
@@ -2302,7 +2277,7 @@ int main() {
                         won1 = p2.getDeck().valueOfDeck();
                     } else {
                         std::cout << "3rd: CPU 2" << std::endl;
-                        std::cout << "4th: Player 1" << std::endl;
+                        std::cout << "4th: You" << std::endl;
                         winnings.push_back(2);
                         winnings.push_back(1);
                         pt2 += p1.getDeck().valueOfDeck();
@@ -2322,7 +2297,7 @@ int main() {
                                 if (winnings[i] > 1) {
                                     std::cout << "CPU " << winnings[i] << std::endl;
                                 } else {
-                                    std::cout << "Player 1" << std::endl;
+                                    std::cout << "You" << std::endl;
                                 }
                                 break;
                             case 1:
@@ -2330,7 +2305,7 @@ int main() {
                                 if (winnings[i] > 1) {
                                     std::cout << "CPU " << winnings[i] << std::endl;
                                 } else {
-                                    std::cout << "Player 1" << std::endl;
+                                    std::cout << "You" << std::endl;
                                 }
                                 break;
                             case 2:
@@ -2339,7 +2314,7 @@ int main() {
                                     if (winnings[i] > 1) {
                                         std::cout << "CPU " << winnings[i] << std::endl;
                                     } else {
-                                        std::cout << "Player 1" << std::endl;
+                                        std::cout << "You" << std::endl;
                                     }
                                     break;
                                 }
@@ -2349,14 +2324,14 @@ int main() {
                                     if (winnings[i] > 1) {
                                         std::cout << "CPU " << winnings[i] << std::endl;
                                     } else {
-                                        std::cout << "Player 1" << std::endl;
+                                        std::cout << "You" << std::endl;
                                     }
                                 }
                         }
                     }
                 }
                 std::cout << "Choose from the following options: " << std::endl;
-                std::cout << "Type 1 to see Player 1's statistics (owned cards, value of deck, points won). " << std::endl;
+                std::cout << "Type 1 to see your statistics (owned cards, value of deck, points won). " << std::endl;
                 std::cout << "Type 2 to see CPU 2's statistics (owned cards, value of deck, points won). " << std::endl;
                 if (numPlay == 4) {
                     std::cout << "Type 3 to see CPU 3's statistics (owned cards, value of deck, points won). " << std::endl;
@@ -2383,32 +2358,32 @@ int main() {
                 makeWhiteSpace();
                 switch(sample) {
                     case 1:
-                        std::cout << "Player 1's hand: " << std::endl;
-                        std::cout << "Player 1 deck value: " << p1.getDeck().valueOfDeck() << std::endl;
+                        std::cout << "Your hand: " << std::endl;
                         p1.revealHand1();
+                        std::cout << "Your deck value: " << p1.getDeck().valueOfDeck() << std::endl;
                         std::cout << "Player 1 has earned a total of: " << won1 << " points!" << std::endl;
                         break;
                     case 2:
                         std::cout << "CPU 2's hand:" << std::endl;
+                        p2.revealHand1();
                         std::cout << "CPU 2 deck value: ";
                         std::cout << p2.getDeck().valueOfDeck() << std::endl;
-                        p2.revealHand1();
                         std::cout << "CPU 2";
                         std::cout << " has earned a total of: " << won2 << " points! " << std::endl;
                         break;
                     case 3:
                         std::cout << "CPU 3's hand:" << std::endl;
+                        p3.revealHand1();
                         std::cout << "CPU 3 deck value: ";
                         std::cout << p3.getDeck().valueOfDeck() << std::endl;
-                        p3.revealHand1();
                         std::cout << "CPU 3";
                         std::cout << " has earned a total of: " << won3 << " points!" << std::endl;
                         break;
                     case 4:
                         std::cout << "CPU 4's hand:" << std::endl;
+                        p4.revealHand1();
                         std::cout << "CPU 4 deck value: ";
                         std::cout << p4.getDeck().valueOfDeck() << std::endl;
-                        p4.revealHand1();
                         std::cout << "CPU 4";
                         std::cout << " has earned a total of: " << won4 << " points! " << std::endl;
                 }
@@ -2419,8 +2394,8 @@ int main() {
             std::cout << "Goal: " << ptG << std::endl;
         }
         //display scores
-        std::cout << "Player 1 score: " << pt1 << std::endl;
-        std::cout << "Player 1 rounds won: " << rounds1 << std::endl;
+        std::cout << "Your score: " << pt1 << std::endl;
+        std::cout << "Your rounds won: " << rounds1 << std::endl;
         std::cout << "CPU 2 score: " << pt2 << std::endl;
         std::cout << "CPU 2 rounds won: " << rounds2 << std::endl;
         if (numPlay == 4) {
@@ -2442,7 +2417,7 @@ int main() {
         if (opt == 4) {
             play1 = "";
             while (play1.compare("Y") != 0 and play1.compare("N") != 0) {
-                std::cout << "Player 1, do you wish to play again? Type Y for yes or N for no. ";
+                std::cout << "Do you wish to play again? Type Y for yes or N for no. ";
                 std::cin >> play1;
                 if (play1.compare("Y") != 0 and play1.compare("N") != 0) {
                     std::cout << "Invalid choice! ";
@@ -2465,8 +2440,8 @@ int main() {
     //overall statistics
     std::cout << std::endl;
     std::cout << "Statistics: " << std::endl;
-    std::cout << "Player 1 score: " << pt1 << std::endl;
-    std::cout << "Player 1 rounds won: " << rounds1 << std::endl;
+    std::cout << "Your score: " << pt1 << std::endl;
+    std::cout << "Your rounds won: " << rounds1 << std::endl;
     std::cout << std::endl;
     std::cout << "CPU 2 score: " << pt2 << std::endl;
     std::cout << "CPU 2 rounds won: " << rounds2 << std::endl;
@@ -2480,7 +2455,7 @@ int main() {
     }
     //winner determination (based on points)
     if (pt1 > pt2 and pt1 > pt3 and pt1 > pt4) {
-        std::cout << "Player 1 wins after " << rounds << " rounds!" << std::endl;
+        std::cout << "You win after " << rounds << " rounds!" << std::endl;
     } else if (pt2 > pt1 and pt2 > pt3 and pt2 > pt4) {
         std::cout << "CPU 2 wins after " << rounds << " rounds!" << std::endl;
     } else if (pt3 > pt1 and pt3 > pt2 and pt3 > pt4) {
@@ -2540,7 +2515,7 @@ int main() {
         }
         if (tiedExistsAgain.size() == 1) {
             if (tiedExistsAgain[0] == 1) {
-                std::cout << "Player 1 wins after " << rounds << " rounds!" << std::endl;
+                std::cout << "You win after " << rounds << " rounds!" << std::endl;
             } else {
                 std::cout << "CPU " << tiedExistsAgain[0] << " wins after" << maxRound << " rounds!" << std::endl;
             }
@@ -2549,14 +2524,14 @@ int main() {
             std::cout << "Tied points won and rounds won! Winner will be determined by random!" << std::endl;
             for (unsigned int i = 0; i < tiedExistsAgain.size(); i++) {
                 if (tiedExistsAgain[i] == 1) {
-                    std::cout << i << "= Player 1 victory" << std::endl;
+                    std::cout << i << "= Your victory" << std::endl;
                 } else {
                     std::cout << i << "= CPU " << tiedExistsAgain[i] << " victory" << std::endl;
                 }
             }
             int winner = rand()%(tiedExistsAgain.size());
             if (tiedExistsAgain[winner] == 1) {
-                std::cout << "Player 1 wins by random draw!" << std::endl;
+                std::cout << "You win by random draw!" << std::endl;
             } else {
                 std::cout << "CPU " << tiedExistsAgain[winner] << " wins by random draw!" << std::endl;
             }

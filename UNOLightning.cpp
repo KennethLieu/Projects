@@ -73,7 +73,7 @@
     draw 4 automatically as if you didn't take the challenge
  4. Implement abstraction in code to reduce code line usage
  5. Upload resulting code to GitHub
- Update 6/20/23 v1.1.0
+ Update 6/20/2023 v1.1.0
   1. *MAJOR UPDATE!* Introduces a new card: the PARDON card! It will has the following features: 
     a) NOT a normal UNO card that you pick up from deck, but everytime you draw a normal UNO card, you have 1/16 chance of picking
     up a PARDON card alongside it. 
@@ -84,7 +84,7 @@
     d) PARDON card will be worth 100 points in the scoring
     e) If you win a round WITHOUT using your PARDON card, you will automatically receive 100 points on top of the value of cards of your
     opponents
-  2. Player/CPUs will no longer be skipped or +2 if those are the starting cards
+  2. Player/CPUs will no longer be skipped or have to draw 2 cards if those are the starting cards
   3. Player 1 will be referred to as You
   4. Coin flip will no longer occur when previous player before stunned player places in second to last card
   5. You will NO longer be able to challenge +4 when you fail coin flip challenge or don't take coin flip. Instead, you automatically pick up 4 cards
@@ -100,7 +100,12 @@
   4. PARDON card can only be used when a +2, +4, SKIP, or LIGHTNING card is played on you. You will be given an option to use it and 
   be freed from the effects played on you, or keep it and suffer from the effects
   5. PARDON card CANNOT used to free yourself from the STUN effect. Instead, you MUST take the coin flip to be freed. It can only be 
-  used to prevent you from being stunned in the first place. 
+  used to prevent you from being stunned in the first place.
+
+  Update 6/20/2023 v1.1.1
+  1. If you have a PARDON card, it will let you know under your hand
+  2. When your turn arrives, there will be an indicator labeling your hand following by the cards you have on you
+
 */
 
 #include <iostream>
@@ -394,14 +399,11 @@ private:
 };
 
 /* Method to print to screen all valid cards that can be played by position of deck */
-void printPlayableCards(std::vector<Card> a, std::vector<int> b,int pardon) {
+void printPlayableCards(std::vector<Card> a, std::vector<int> b) {
     std::cout << "Playable cards: " << std::endl;
     for (unsigned int i = 0; i < a.size(); i++) {
         std::cout << b[i] << ". ";
         a[i].printCard();
-    }
-    if (pardon == 1) {
-        std::cout << "PARDON CARD " << std::endl;
     }
 }
 
@@ -1054,7 +1056,11 @@ int main() {
                 playableCards1 = getPlayableCards(p1.getDeck(),startingCard);
                 positions1 = getPlayablePositions(p1.getDeck(),startingCard);
                 std::cout << "Your turn!" << std::endl;
+                std::cout << "Your hand: " << std::endl;
                 p1.revealHand();
+                if (pardon == 1) {
+                    std::cout << "PARDON CARD" << std::endl;
+                }
                 if (p1.getDeck().getNumberOfCards() >= 2) {
                     shoutedUno1 = false;
                     c1 = 0;
@@ -1069,7 +1075,7 @@ int main() {
 
                 //checks if player 1 has a playable card
                 if (p1.getDeck().hasPlayableCard(startingCard) == true) {
-                    printPlayableCards(playableCards1,positions1,pardon);
+                    printPlayableCards(playableCards1,positions1);
                     if (p1.getDeck().getNumberOfCards() == 2) {
                         std::cout << "Tip: Now would be a good time to shout UNO." << std::endl;
                     }
