@@ -5731,7 +5731,7 @@ int main() {
                         std::cout << "CPU 2's hand:" << std::endl;
                         p2.revealHand1();
                         {
-                        int totalP2 = p3.getDeck().valueOfDeck();
+                        int totalP2 = p2.getDeck().valueOfDeck();
                         if (p2.getDeck().getNumberOfCards() != 0 and pardon == 2) {
                             totalP2 += 100;
                         }
